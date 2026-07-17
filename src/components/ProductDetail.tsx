@@ -289,7 +289,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
                   </div>
                 </div>
 
-                {product.assurance_layer && (
+                {product.assurance_yn && (
                   <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-start space-x-3">
                     <div className="text-blue-500 mt-0.5">⭐</div>
                     <div>

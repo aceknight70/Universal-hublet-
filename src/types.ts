@@ -60,13 +60,13 @@ export interface Database {
           name: string;
           description_headline: string | null;
           description_bullets: string[] | null;
-          specs: any | null;
+          technical_specs: any | null;
           extra_details: string | null;
           price: number | null;
-          assurance_layer: boolean;
+          assurance_yn: boolean;
           assurance_text: string | null;
           contact_link: string | null;
-          laggard_layer: boolean;
+          laggard_yn: boolean;
           laggard_promo_text: string | null;
           stock_count: number | null;
           main_image: string | null;
