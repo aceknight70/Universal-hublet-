@@ -112,13 +112,7 @@ export function SheetManager() {
         laggard_yn: laggardYesNo === 'yes',
         laggard_promo_text: laggardPromoText,
         stock_count: stockCount,
-        main_image: row['Image URL (source link)'] || null,
-        front_image: row['Front Image (Cloudinary)'] || null,
-        left_image: row['Left Side Image (Cloudinary)'] || null,
-        right_image: row['Right Side Image (Cloudinary)'] || null,
-        back_image: row['Back Image (Cloudinary)'] || null,
-        video_url: row['Video (Cloudinary)'] || null,
-        stock_status: row['Stock Status'] || 'In Stock',
+                                                        stock_status: row['Stock Status'] || 'In Stock',
         staff_notes: row['Staff Notes'] || null,
         search_keywords: searchWords.length > 0 ? searchWords : null
       };

@@ -66,6 +66,14 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
     if (columnCheckError) {
       delete (finalProduct as any).contact_link;
     }
+    // Remove image fields from products table payload
+    delete (finalProduct as any).main_image;
+    delete (finalProduct as any).front_image;
+    delete (finalProduct as any).left_image;
+    delete (finalProduct as any).right_image;
+    delete (finalProduct as any).back_image;
+    delete (finalProduct as any).video_url;
+
 
     if (isNew) {
       delete (finalProduct as any).id;
