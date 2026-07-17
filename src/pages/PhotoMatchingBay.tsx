@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../hooks/useStore';
+import { compressImage } from '../lib/imageUtils';
 
 export function PhotoMatchingBay() {
   const { client } = useStore();
   const [photos, setPhotos] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (client) {
@@ -27,24 +30,34 @@ export function PhotoMatchingBay() {
     }
   }
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
+    // Show instant preview
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    setSuccessMsg(null);
     setIsUploading(true);
     setErrorMsg(null);
+
     try {
-      const fileExt = file.name.split('.').pop();
-      // To satisfy possible UUID folder constraints, we'll prefix with client.id
-      // However, if client.id is 'fallback-1', this will fail. We'll use a dummy UUID if needed.
+      // Compress image
+      const compressedFile = await compressImage(file, 1600);
+
+      const fileExt = compressedFile.name.split('.').pop() || 'jpg';
       const folder = client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || 'public');
       const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('manifest_gallery')
-        .upload(fileName, file);
+        .upload(fileName, compressedFile);
 
       if (uploadError) throw uploadError;
+      
+      setSuccessMsg("Photo saved successfully.");
+      setTimeout(() => setSuccessMsg(null), 3000);
+      setPreviewUrl(null); // clear preview on success
       
       await loadTray();
     } catch (err: any) {
@@ -52,6 +65,8 @@ export function PhotoMatchingBay() {
       setErrorMsg("Upload failed: " + err.message);
     } finally {
       setIsUploading(false);
+      // Clean up object URL to avoid memory leaks
+      URL.revokeObjectURL(objectUrl);
     }
   }
 
@@ -77,7 +92,23 @@ export function PhotoMatchingBay() {
             file:bg-purple-50 file:text-purple-700
             hover:file:bg-purple-100 disabled:opacity-50"
         />
-        {isUploading && <p className="text-sm text-purple-600 mt-2">Uploading...</p>}
+        
+        {previewUrl && (
+          <div className="mt-4">
+            <p className="text-sm font-medium mb-2">Preview:</p>
+            <div className="relative inline-block">
+              <img src={previewUrl} alt="Preview" className="w-32 h-32 object-cover rounded shadow-sm border" />
+              {isUploading && (
+                <div className="absolute inset-0 bg-black bg-opacity-40 flex flex-col items-center justify-center rounded">
+                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-white text-xs mt-2 font-medium">Uploading...</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {successMsg && <p className="text-sm text-green-600 mt-2 font-medium">✓ {successMsg}</p>}
+
         {errorMsg && (
           <div className="mt-4 p-4 bg-red-50 text-red-700 rounded border border-red-200">
             <strong>Error:</strong> {errorMsg}

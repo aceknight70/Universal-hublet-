@@ -39,7 +39,7 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
 
   const managerLinks = [
     { name: 'Manager Room', path: 'manager' },
-    { name: 'Sheet Manager', path: 'sheet-manager' },
+    
   ];
 
   const masterLinks = [
@@ -50,6 +50,7 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
   const isManager = ['manager', 'master'].includes(viewMode);
   const isMaster = viewMode === 'master';
 
+  const isSheetManagerActive = currentPath === 'sheet-manager';
   const NavGroup = ({ title, links, isHighlighted = false }: { title: string, links: any[], isHighlighted?: boolean }) => {
     return (
       <div className="relative group inline-block">
@@ -79,10 +80,20 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
   };
 
   return (
-    <div className="flex items-center gap-4 md:gap-6 overflow-x-auto pb-2 scrollbar-hide max-w-full">
+    <div className="flex flex-wrap items-center gap-3 md:gap-6 pb-1 max-w-full">
       <NavGroup title="Customer Rooms" links={customerLinks} />
       {isStaff && <NavGroup title="Staff Modules" links={staffLinks} isHighlighted={viewMode === 'staff'} />}
-      {isManager && <NavGroup title="Manager Modules" links={managerLinks} isHighlighted={viewMode === 'manager'} />}
+      {isManager && <NavGroup title="Manager Modules" links={managerLinks} isHighlighted={viewMode === 'manager' && !isSheetManagerActive} />}
+      {isManager && (
+        <Link 
+          to={`/${clientSlug}/sheet-manager`}
+          className={`text-sm font-bold whitespace-nowrap px-3 py-1.5 rounded-md border-2 transition-all ${isSheetManagerActive ? 'bg-black/10' : 'hover:bg-black/5'}`}
+          style={{ color: headerTextColor, borderColor: headerTextColor }}
+        >
+          Sheet Manager
+        </Link>
+      )}
+
       {isMaster && <NavGroup title="Master Modules" links={masterLinks} isHighlighted={true} />}
     </div>
   );

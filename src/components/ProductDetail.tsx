@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Product, Brand, SHARED_CATEGORIES } from '../types';
-import { X, Check, ImagePlus } from 'lucide-react';
+import { X, Check, ImagePlus, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { compressImage } from '../lib/imageUtils';
 import { cn } from '../lib/utils';
 import { useStore } from '../hooks/useStore';
 
@@ -25,6 +26,7 @@ const PHOTO_SLOTS = [
 export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNew }: ProductDetailProps) {
   const { client } = useStore();
   const [isEditing, setIsEditing] = useState(isNew || false);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [editedProduct, setEditedProduct] = useState<Product>(product);
   const [saving, setSaving] = useState(false);
   const [activePhoto, setActivePhoto] = useState<string | null>(product.main_image || product.front_image || product.left_image || product.right_image || product.back_image || null);

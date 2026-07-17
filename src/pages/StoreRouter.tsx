@@ -72,23 +72,20 @@ function StoreContent() {
   return (
     <div style={{ '--theme-accent': accentColor, backgroundColor: backgroundColor } as React.CSSProperties} className="min-h-screen flex flex-col">
       <header 
-        className="shadow-sm px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+        className="shadow-sm flex flex-col"
         style={{ backgroundColor: headerBackgroundColor }}
       >
-        <Link to={`/${client.slug}`} className="text-xl font-bold shrink-0" style={{ color: headerTextColor }}>{client.name}</Link>
-        
-        <div className="flex items-center gap-4 md:gap-6 flex-1 justify-start md:justify-end overflow-hidden w-full">
-          <StoreNavigation clientSlug={client.slug} viewMode={viewMode} headerTextColor={headerTextColor} />
-
-          <div className="flex items-center space-x-4 md:border-l md:pl-4 border-opacity-20 shrink-0" style={{ borderColor: headerTextColor }}>
+        <div className="px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+          <Link to={`/${client.slug}`} className="text-xl font-bold shrink-0" style={{ color: headerTextColor }}>{client.name}</Link>
+          <div className="flex items-center space-x-2 md:space-x-4 shrink-0" style={{ borderColor: headerTextColor }}>
             <div className="flex items-center space-x-2">
-              <span className="text-xs uppercase tracking-wider" style={{ color: headerTextColor, opacity: 0.6 }}>Store:</span>
+              <span className="text-xs uppercase tracking-wider hidden md:inline-block" style={{ color: headerTextColor, opacity: 0.6 }}>Store:</span>
               <select 
                 value={client.slug}
                 onChange={e => {
                   window.location.href = `/${e.target.value}`;
                 }}
-                className="text-xs border border-white border-opacity-20 rounded p-1 bg-transparent"
+                className="text-xs border border-white border-opacity-20 rounded p-1 bg-transparent max-w-[100px] md:max-w-none"
                 style={{ color: headerTextColor }}
               >
                 <option value="ugomenz" className="text-black">Ugomenz</option>
@@ -97,10 +94,9 @@ function StoreContent() {
                 <option value="linz" className="text-black">Linz</option>
               </select>
             </div>
-
             <div className="flex items-center space-x-2 md:border-l md:pl-4 border-opacity-20" style={{ borderColor: headerTextColor }}>
               {user ? (
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <span className="text-xs font-semibold uppercase px-2 py-1 bg-black bg-opacity-10 rounded" style={{ color: headerTextColor }}>
                     {profile?.role || 'No Role'}
                   </span>
@@ -123,6 +119,11 @@ function StoreContent() {
               )}
             </div>
           </div>
+        </div>
+        
+        {/* Navigation Row */}
+        <div className="px-4 md:px-6 pb-3 pt-2 border-t border-black/5 w-full">
+          <StoreNavigation clientSlug={client.slug} viewMode={viewMode} headerTextColor={headerTextColor} />
         </div>
       </header>
       
