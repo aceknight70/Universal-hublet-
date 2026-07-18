@@ -29,7 +29,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [editedProduct, setEditedProduct] = useState<Product>(product);
   const [saving, setSaving] = useState(false);
-  const [activePhoto, setActivePhoto] = useState<string | null>(product.main_image || product.front_image || product.left_image || product.right_image || product.back_image || null);
+  const [activePhoto, setActivePhoto] = useState<string | null>((product as any).main_image || (product as any).front_image || (product as any).left_image || (product as any).right_image || (product as any).back_image || null);
   const [allBrands, setAllBrands] = useState<Brand[]>([]);
 
   useEffect(() => {
@@ -73,6 +73,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
     delete (finalProduct as any).right_image;
     delete (finalProduct as any).back_image;
     delete (finalProduct as any).video_url;
+    delete (finalProduct as any).extra_details;
 
 
     if (isNew) {
@@ -266,10 +267,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
                    <input type="text" value={editedProduct.description_headline || ''} onChange={e => setEditedProduct({...editedProduct, description_headline: e.target.value})} className="w-full border rounded p-2 text-sm" />
                 </div>
 
-                <div>
-                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Specs / Extra Details</label>
-                   <textarea value={editedProduct.extra_details || ''} onChange={e => setEditedProduct({...editedProduct, extra_details: e.target.value})} className="w-full border rounded p-2 text-sm h-24" />
-                </div>
+                
               </div>
             ) : (
               <div className="flex-1 space-y-6">
@@ -311,7 +309,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
                   <div>
                     <h3 className="text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Key Features</h3>
                     <ul className="space-y-1.5">
-                      {product.description_bullets.map((b, i) => (
+                      {(Array.isArray(product.description_bullets) ? product.description_bullets : typeof product.description_bullets === 'string' ? (String(product.description_bullets).includes('\n') ? String(product.description_bullets).split('\n') : [product.description_bullets]) : []).map((b: any, i: number) => (
                         <li key={i} className="text-sm text-gray-600 flex items-start">
                           <span className="text-[var(--theme-accent)] mr-2 mt-0.5">•</span>
                           {b}
@@ -321,10 +319,10 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
                   </div>
                 )}
                 
-                {product.extra_details && (
+                {(product as any).extra_details && (
                   <div className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg">
                     <h3 className="font-bold text-gray-900 mb-1">Specs & Details</h3>
-                    <div className="whitespace-pre-wrap">{product.extra_details}</div>
+                    <div className="whitespace-pre-wrap">{(product as any).extra_details}</div>
                   </div>
                 )}
               </div>
@@ -348,11 +346,17 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
                   {canEdit && (
                     <button 
                       onClick={() => setIsEditing(true)}
-                      className="px-6 border-2 border-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                      className="px-4 border-2 border-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-50 transition-colors"
                     >
-                      Edit Product
+                      Edit
                     </button>
                   )}
+                  <button 
+                    onClick={onClose}
+                    className="px-4 border-2 border-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                  >
+                    Back
+                  </button>
                 </>
               )}
             </div>

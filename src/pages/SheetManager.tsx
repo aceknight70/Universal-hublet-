@@ -25,6 +25,7 @@ export function SheetManager() {
   const [existingCodes, setExistingCodes] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState<{type: 'success'|'error', text: string} | null>(null);
 
   useEffect(() => {
     async function loadRefData() {
@@ -91,10 +92,7 @@ export function SheetManager() {
       
       // Stock count logic
       let laggardPromoText = row['Laggard Promo Text / Stock Count'] || null;
-      let stockCount = null;
-      if (laggardPromoText && !isNaN(Number(laggardPromoText))) {
-         stockCount = Number(laggardPromoText);
-      }
+      
 
       const dbRow = {
         code,
@@ -104,17 +102,14 @@ export function SheetManager() {
         description_headline: row['Description Headline'] || null,
         description_bullets: bullets.length > 0 ? bullets : null,
         technical_specs: row['Technical Specs (Full)'] || null,
-        extra_details: row['Extra Details (From Box/Label)'] || null,
-        price,
+                price,
         assurance_yn: assuranceYesNo === 'yes',
         assurance_text: row['Assurance Text'] || null,
         contact_link: row['Contact Number / Link'] || null,
         laggard_yn: laggardYesNo === 'yes',
         laggard_promo_text: laggardPromoText,
-        stock_count: stockCount,
-                                                        stock_status: row['Stock Status'] || 'In Stock',
-        staff_notes: row['Staff Notes'] || null,
-        search_keywords: searchWords.length > 0 ? searchWords : null
+                                                                stock_status: row['Stock Status'] || 'In Stock',
+                search_keywords: searchWords.length > 0 ? searchWords : null
       };
 
       return {
@@ -165,11 +160,11 @@ export function SheetManager() {
         
         setProgress(Math.min(validRows.length, i + CHUNK_SIZE));
       }
-      alert('Import successful!');
+      setMessage({ type: 'success', text: `Successfully imported ${validRows.length} products.` });
       setParsedRows([]);
       setPasteData('');
     } catch (err: any) {
-      alert(`Error during import: ${err.message}`);
+      setMessage({ type: 'error', text: `Error during import: ${err.message}` });
     } finally {
       setSaving(false);
     }
@@ -181,7 +176,14 @@ export function SheetManager() {
         <strong>Sheet Manager</strong> • Paste your product list here to bulk import or update.
       </div>
 
+
+      {message && (
+        <div className={`px-4 py-3 rounded mb-6 ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          <strong>{message.type === 'success' ? 'Success: ' : 'Error: '}</strong> {message.text}
+        </div>
+      )}
       <div className="mb-6">
+
         <textarea
           className="w-full h-40 border rounded p-4 text-sm font-mono"
           placeholder="Paste your product list here (CSV format from Excel/Sheets)..."

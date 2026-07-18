@@ -23,8 +23,8 @@ export function ProductCard({ product, brand, onClick, canEdit }: ProductCardPro
         </div>
       )}
       <div className="aspect-square bg-gray-50 relative p-4 flex items-center justify-center">
-        {product.main_image ? (
-          <img src={product.main_image} alt={product.name} className="max-w-full max-h-full object-contain mix-blend-multiply" />
+        {(product as any).main_image ? (
+          <img src={(product as any).main_image} alt={product.name} className="max-w-full max-h-full object-contain mix-blend-multiply" />
         ) : (
           <div className="text-gray-300 text-sm">No Image</div>
         )}
