@@ -46,7 +46,7 @@ export function PhotoMatchingBay() {
       const compressedFile = await compressImage(file, 1600);
 
       const fileExt = compressedFile.name.split('.').pop() || 'jpg';
-      const folder = client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || 'public');
+      const folder = client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || '00000000-0000-0000-0000-000000000000');
       const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
@@ -123,7 +123,7 @@ export function PhotoMatchingBay() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {photos.filter(p => p.name !== '.emptyFolderPlaceholder').map(photo => {
-              const url = supabase.storage.from('manifest_gallery').getPublicUrl(`${client?.id}/${photo.name}`).data.publicUrl;
+              const url = supabase.storage.from('manifest_gallery').getPublicUrl(`${client?.id || '00000000-0000-0000-0000-000000000000'}/${photo.name}`).data.publicUrl;
               return (
                 <div key={photo.name} className="border rounded bg-white shadow-sm overflow-hidden">
                   <img src={url} alt={photo.name} className="w-full h-32 object-cover" />
