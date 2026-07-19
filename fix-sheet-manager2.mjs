@@ -1,62 +1,14 @@
 import fs from 'fs';
 let content = fs.readFileSync('src/pages/SheetManager.tsx', 'utf8');
 
-// Add states
-content = content.replace(
-  "const [message, setMessage] = useState<{type: 'success'|'error', text: string} | null>(null);",
-  "const [message, setMessage] = useState<{type: 'success'|'error', text: string} | null>(null);\n  const [catalog, setCatalog] = useState<{code: string, name: string, price: number}[]>([]);\n  const [loadingCatalog, setLoadingCatalog] = useState(false);"
-);
+const matchStart = '  return (\\n    <div className="p-6 max-w-6xl mx-auto">';
+const matchEnd = '{parsedRows.length > 0 && (';
 
-// Add loadCatalog
-const loadCatalogFunc = `  const loadCatalog = async () => {
-    setLoadingCatalog(true);
-    const { data } = await supabase.from('manifest_products').select('code, name, price').order('created_at', { ascending: false });
-    if (data) setCatalog(data);
-    setLoadingCatalog(false);
-  };
+const re = new RegExp('  return \\(\\[\\\\s\\\\S]*?(?={parsedRows\\.length > 0 && \\()');
+const match = content.match(/  return \([\s\S]*?(?=\{parsedRows\.length > 0 && \()/);
 
-  useEffect(() => {
-    loadCatalog();
-  }, []);`;
-
-content = content.replace(
-  "useEffect(() => {\n    async function loadRefData() {",
-  loadCatalogFunc + "\n\n  useEffect(() => {\n    async function loadRefData() {"
-);
-
-// Update loadCatalog on success
-content = content.replace(
-  "setMessage({ type: 'success', text: `Successfully imported ${validRows.length} products.` });\n      setParsedRows([]);\n      setPasteData('');",
-  "setMessage({ type: 'success', text: `Successfully imported ${validRows.length} products.` });\n      setParsedRows([]);\n      setPasteData('');\n      loadCatalog();"
-);
-
-// Restructure UI
-const oldUI = `  return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded mb-6 text-sm">
-        <strong>Sheet Manager</strong> • Paste your product list here to bulk import or update.
-      </div>
-      {message && (
-        <div className={\`px-4 py-3 rounded mb-6 \${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}\`}>
-          <strong>{message.type === 'success' ? 'Success: ' : 'Error: '}</strong> {message.text}
-        </div>
-      )}
-      <div className="mb-6">
-        <textarea
-          className="w-full h-40 border rounded p-4 text-sm font-mono"
-          placeholder="Paste your product list here (CSV format from Excel/Sheets)..."
-          value={pasteData}
-          onChange={e => setPasteData(e.target.value)}
-        />
-        <button
-          onClick={handleParse}
-          className="mt-2 px-4 py-2 bg-gray-800 text-white rounded shadow hover:bg-gray-700"
-        >
-          Preview Import
-        </button>
-      </div>`;
-
-const newUI = `  return (
+if (match) {
+  content = content.replace(match[0], `  return (
     <div className="p-4 md:p-6 w-full max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col">
       <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded mb-4 text-sm shrink-0">
         <strong>Sheet Manager</strong> • View your current catalog or paste a new list to bulk import/update.
@@ -132,19 +84,22 @@ const newUI = `  return (
             </div>
           </div>
         </div>
-      </div>`;
+      </div>
+      
+      `);
+}
 
-content = content.replace(oldUI, newUI);
-
+// Fix the syntax error from earlier
 content = content.replace(
-  '{parsedRows.length > 0 && (\n        <div className="bg-white rounded shadow overflow-hidden">',
+  '{parsedRows.length > 0 && (\n        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-sm">\n          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative">',
   '{parsedRows.length > 0 && (\n        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-sm">\n          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative">'
 );
 
+// We need an extra </div> to close the fixed inset div
 content = content.replace(
-  '          </div>\n        </div>\n      )}\n    </div>\n  );\n}',
-  '            <div className="p-4 bg-gray-50 border-t flex justify-end">\n              <button onClick={() => setParsedRows([])} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">Cancel</button>\n            </div>\n          </div>\n        </div>\n      )}\n    </div>\n  );\n}'
+  '            <div className="p-4 bg-gray-50 border-t flex justify-end">\n              <button onClick={() => setParsedRows([])} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">Cancel</button>\n            </div>\n          </div>\n        </div>\n      )}\n    </div>\n  );\n}',
+  '            <div className="p-4 bg-gray-50 border-t flex justify-end">\n              <button onClick={() => setParsedRows([])} className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium">Cancel</button>\n            </div>\n          </div>\n          </div>\n        </div>\n      )}\n    </div>\n  );\n}'
 );
 
 fs.writeFileSync('src/pages/SheetManager.tsx', content);
-console.log("Sheet Manager updated!");
+console.log("Sheet Manager UI updated and syntax fixed!");
