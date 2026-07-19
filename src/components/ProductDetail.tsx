@@ -29,6 +29,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [editedProduct, setEditedProduct] = useState<Product>(product);
   const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [activePhoto, setActivePhoto] = useState<string | null>((product as any).main_image || (product as any).front_image || (product as any).left_image || (product as any).right_image || (product as any).back_image || null);
   const [allBrands, setAllBrands] = useState<Brand[]>([]);
 
@@ -110,21 +111,34 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
     
     if (savedProductData) {
       // Save images to manifest_product_images
+      let imageError = null;
       const imageSlots = ['main_image', 'front_image', 'left_image', 'right_image', 'back_image'];
       for (const slot of imageSlots) {
         if ((editedProduct as any)[slot]) {
           const dbSlot = slot.replace('_image', '');
           // @ts-ignore
-          await supabase.from('manifest_product_images').upsert({
+          const { error } = await supabase.from('manifest_product_images').upsert({
             product_id: savedProductData.id,
             slot: dbSlot,
             image_url: (editedProduct as any)[slot]
           } as any, { onConflict: 'product_id,slot' });
-          savedProductData[slot] = (editedProduct as any)[slot];
+          
+          if (error) {
+            imageError = error;
+            console.error("Image Upsert Error for slot", dbSlot, error);
+            alert("Error saving " + dbSlot + " photo: " + error.message);
+          } else {
+            savedProductData[slot] = (editedProduct as any)[slot];
+          }
         }
       }
-      onUpdate(savedProductData);
-      setIsEditing(false);
+      
+      if (!imageError) {
+        onUpdate(savedProductData);
+        setIsEditing(false);
+        setSuccessMsg("Photo saved successfully.");
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
     }
     
     setSaving(false);
@@ -171,6 +185,11 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative">
+        {successMsg && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-50 text-green-700 px-4 py-2 rounded shadow border border-green-200 z-50 font-bold">
+            {successMsg}
+          </div>
+        )}
         <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-50 text-gray-500">
           <X className="w-5 h-5" />
         </button>

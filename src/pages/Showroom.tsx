@@ -64,7 +64,7 @@ export function Showroom() {
       }
 
       // Load products
-      let query = supabase.from('manifest_products').select('*');
+      let query = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)');
       if (selectedBrandId) {
         query = query.eq('brand_id', selectedBrandId);
       }
@@ -74,7 +74,21 @@ export function Showroom() {
       
       const { data: prodData } = await query;
       if (prodData) {
-        setProducts(prodData);
+        const productsWithImages = prodData.map((p: any) => {
+          const formatted = { ...p };
+          if (p.manifest_product_images) {
+             p.manifest_product_images.forEach((img: any) => {
+                if (img.slot === 'main') formatted.main_image = img.image_url;
+                if (img.slot === 'front') formatted.front_image = img.image_url;
+                if (img.slot === 'left') formatted.left_image = img.image_url;
+                if (img.slot === 'right') formatted.right_image = img.image_url;
+                if (img.slot === 'back') formatted.back_image = img.image_url;
+             });
+             delete formatted.manifest_product_images;
+          }
+          return formatted;
+        });
+        setProducts(productsWithImages);
       }
 
       // Load specific extra categories from client
