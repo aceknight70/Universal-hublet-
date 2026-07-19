@@ -81,14 +81,14 @@ export function PhotoMatchingBay() {
     }
   }
 
-  async function handleMatch(product: Product) {
+  async function handleMatch(product: Product, slot: string) {
     if (!selectedPhoto) return;
     setIsMatching(true);
     setErrorMsg(null);
     try {
       const folder = client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || '00000000-0000-0000-0000-000000000000');
       const oldPath = `${folder}/${selectedPhoto.name}`;
-      const newPath = `${folder}/matched_${selectedPhoto.name}`;
+      const newPath = `${folder}/matched_${Date.now()}_${selectedPhoto.name}`; // Add timestamp to avoid collisions
       
       // Get the URL for the new path
       const { data: publicUrlData } = supabase.storage
@@ -99,7 +99,7 @@ export function PhotoMatchingBay() {
       // @ts-ignore
       const { error: dbError } = await supabase.from('manifest_product_images').upsert({
         product_id: product.id,
-        slot: 'main_image',
+        slot: slot,
         image_url: publicUrlData.publicUrl
       } as any, { onConflict: 'product_id,slot' });
       
@@ -128,9 +128,9 @@ export function PhotoMatchingBay() {
   );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto flex flex-col md:flex-row gap-6 h-[calc(100vh-100px)]">
+    <div className="p-4 md:p-6 w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-4 md:gap-6 flex-1 min-h-0">
       {/* Left Sidebar: Upload & Unmatched Tray */}
-      <div className="w-full md:w-1/3 flex flex-col gap-6 h-full">
+      <div className="w-full md:w-1/3 flex flex-col gap-4 md:gap-6 shrink-0 h-[45vh] md:h-full min-h-[400px] md:min-h-0">
         <h2 className="text-2xl font-bold text-gray-800">Photo Bay</h2>
         
         <div className="bg-white p-4 rounded shadow-sm border">
@@ -192,7 +192,7 @@ export function PhotoMatchingBay() {
       </div>
 
       {/* Right Content: Product Matching */}
-      <div className="w-full md:w-2/3 flex flex-col h-full bg-white rounded shadow-sm border overflow-hidden">
+      <div className="w-full md:w-2/3 flex flex-col bg-white rounded shadow-sm border overflow-hidden h-[60vh] md:h-full min-h-[500px] md:min-h-0">
         {selectedPhoto ? (
           <div className="p-4 border-b bg-blue-50 flex items-center justify-between">
             <div>
@@ -241,8 +241,7 @@ export function PhotoMatchingBay() {
             {filteredProducts.map(product => (
               <div 
                 key={product.id}
-                className={`border rounded-lg p-3 flex gap-3 transition-all ${selectedPhoto ? 'hover:border-[var(--theme-accent)] hover:shadow-md cursor-pointer bg-white' : 'opacity-70 bg-gray-50 grayscale'}`}
-                onClick={() => selectedPhoto && handleMatch(product)}
+                className={`border rounded-lg p-3 flex flex-col gap-3 transition-all ${selectedPhoto ? 'hover:border-[var(--theme-accent)] hover:shadow-md bg-white' : 'opacity-70 bg-gray-50 grayscale'}`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-gray-900 truncate">{product.name}</div>
@@ -250,13 +249,20 @@ export function PhotoMatchingBay() {
                   <div className="text-xs text-gray-400 mt-1">{product.category}</div>
                 </div>
                 {selectedPhoto && (
-                  <div className="flex items-center">
-                    <button 
-                      disabled={isMatching}
-                      className="text-xs bg-[var(--theme-accent)] text-white px-3 py-1.5 rounded font-medium disabled:opacity-50"
-                    >
-                      {isMatching ? 'Matching...' : 'Match'}
-                    </button>
+                  <div className="flex flex-col gap-2 border-t pt-2 mt-1">
+                    <div className="text-xs font-semibold text-gray-600">Select Slot to Match:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {['main', 'front', 'left', 'right', 'back'].map(slot => (
+                        <button 
+                          key={slot}
+                          disabled={isMatching}
+                          onClick={() => handleMatch(product, slot)}
+                          className="text-xs bg-gray-100 hover:bg-[var(--theme-accent)] hover:text-white text-gray-700 px-3 py-1.5 rounded font-medium disabled:opacity-50 transition-colors capitalize"
+                        >
+                          {slot}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

@@ -113,10 +113,11 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
       const imageSlots = ['main_image', 'front_image', 'left_image', 'right_image', 'back_image'];
       for (const slot of imageSlots) {
         if ((editedProduct as any)[slot]) {
+          const dbSlot = slot.replace('_image', '');
           // @ts-ignore
           await supabase.from('manifest_product_images').upsert({
             product_id: savedProductData.id,
-            slot: slot,
+            slot: dbSlot,
             image_url: (editedProduct as any)[slot]
           } as any, { onConflict: 'product_id,slot' });
           savedProductData[slot] = (editedProduct as any)[slot];
