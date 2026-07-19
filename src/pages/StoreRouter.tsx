@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useParams, useNavigate, Link, Navigate } from 'react-router-dom';
+import { Routes, Route, useParams, useNavigate, Link, Navigate, useLocation } from 'react-router-dom';
 import { StoreProvider, useStore } from '../hooks/useStore';
 import { useAuth } from '../hooks/useAuth';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -12,11 +12,27 @@ import { PhotoMatchingBay } from './PhotoMatchingBay';
 import { StoreNavigation } from '../components/Navigation';
 
 
-function FloatingBackButton() {
+function FloatingBackButton({ viewMode }: { viewMode: string }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { storeSlug } = useParams<{ storeSlug: string }>();
+  
+  const isIframe = window.self !== window.top;
+  const isMaster = viewMode === 'master';
+  const isMasterRoom = location.pathname.endsWith('/master');
+  
+  if (!isIframe && (!isMaster || isMasterRoom)) {
+    return null;
+  }
+
   const goBack = () => {
-    window.parent.postMessage('backToParent', '*');
-    window.parent.postMessage({ type: 'RETURN_TO_PARENT' }, '*');
-    window.parent.postMessage('close', '*');
+    if (isIframe) {
+      window.parent.postMessage('backToParent', '*');
+      window.parent.postMessage({ type: 'RETURN_TO_PARENT' }, '*');
+      window.parent.postMessage('close', '*');
+    } else {
+      navigate(`/${storeSlug}/master`);
+    }
   };
 
   return (
@@ -164,7 +180,7 @@ function StoreContent() {
           {/* Master Routes */}
           <Route path="/master/*" element={<ProtectedRoute roleRequired="master"><MasterRoom /></ProtectedRoute>} />
         </Routes>
-        {viewMode === 'customer' && <FloatingBackButton />}
+        {<FloatingBackButton viewMode={viewMode} />}
       </main>
     </div>
   );

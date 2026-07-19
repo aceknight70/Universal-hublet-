@@ -76,6 +76,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
     delete (finalProduct as any).extra_details;
 
 
+        let savedProductData = null;
     if (isNew) {
       delete (finalProduct as any).id;
       if (!finalProduct.code) finalProduct.code = `NEW-${Date.now()}`;
@@ -85,12 +86,11 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
         .insert(finalProduct as any)
         .select()
         .single();
-
+      
       if (error) {
         alert('Error creating product: ' + error.message);
       } else if (data) {
-        onUpdate(data);
-        setIsEditing(false);
+        savedProductData = data;
       }
     } else {
       const { data, error } = await supabase
@@ -100,14 +100,32 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
         .eq('id', product.id)
         .select()
         .single();
-
+        
       if (error) {
         alert('Error saving product: ' + error.message);
       } else if (data) {
-        onUpdate(data);
-        setIsEditing(false);
+        savedProductData = data;
       }
     }
+    
+    if (savedProductData) {
+      // Save images to manifest_product_images
+      const imageSlots = ['main_image', 'front_image', 'left_image', 'right_image', 'back_image'];
+      for (const slot of imageSlots) {
+        if ((editedProduct as any)[slot]) {
+          // @ts-ignore
+          await supabase.from('manifest_product_images').upsert({
+            product_id: savedProductData.id,
+            slot: slot,
+            image_url: (editedProduct as any)[slot]
+          } as any, { onConflict: 'product_id,slot' });
+          savedProductData[slot] = (editedProduct as any)[slot];
+        }
+      }
+      onUpdate(savedProductData);
+      setIsEditing(false);
+    }
+    
     setSaving(false);
   };
 
@@ -151,7 +169,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-full flex flex-col overflow-hidden relative">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden relative">
         <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-50 text-gray-500">
           <X className="w-5 h-5" />
         </button>

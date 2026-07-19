@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import fs from 'fs';
+let content = fs.readFileSync('src/pages/PhotoMatchingBay.tsx', 'utf8');
+
+const newContent = `import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../hooks/useStore';
 import { compressImage } from '../lib/imageUtils';
@@ -59,7 +62,7 @@ export function PhotoMatchingBay() {
       const compressedFile = await compressImage(file, 1600);
       const fileExt = compressedFile.name.split('.').pop() || 'jpg';
       const folder = client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || '00000000-0000-0000-0000-000000000000');
-      const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const fileName = \`\${folder}/\${Date.now()}_\${Math.random().toString(36).substring(7)}.\${fileExt}\`;
       
       const { error: uploadError } = await supabase.storage
         .from('manifest_gallery')
@@ -87,8 +90,8 @@ export function PhotoMatchingBay() {
     setErrorMsg(null);
     try {
       const folder = client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || '00000000-0000-0000-0000-000000000000');
-      const oldPath = `${folder}/${selectedPhoto.name}`;
-      const newPath = `${folder}/matched_${selectedPhoto.name}`;
+      const oldPath = \`\${folder}/\${selectedPhoto.name}\`;
+      const newPath = \`\${folder}/matched_\${selectedPhoto.name}\`;
       
       // Get the URL for the new path
       const { data: publicUrlData } = supabase.storage
@@ -96,12 +99,11 @@ export function PhotoMatchingBay() {
         .getPublicUrl(newPath);
       
       // Insert into product images
-      // @ts-ignore
       const { error: dbError } = await supabase.from('manifest_product_images').upsert({
         product_id: product.id,
         slot: 'main_image',
         image_url: publicUrlData.publicUrl
-      } as any, { onConflict: 'product_id,slot' });
+      }, { onConflict: 'product_id,slot' });
       
       if (dbError) throw dbError;
       
@@ -110,7 +112,7 @@ export function PhotoMatchingBay() {
       // We ignore move errors if it fails, at least the DB is updated, but ideally it succeeds.
       if (moveError) console.warn("Failed to mark file as matched in storage:", moveError);
       
-      setSuccessMsg(`Photo matched to ${product.name}!`);
+      setSuccessMsg(\`Photo matched to \${product.name}!\`);
       setTimeout(() => setSuccessMsg(null), 3000);
       setSelectedPhoto(null);
       await loadTray();
@@ -168,13 +170,13 @@ export function PhotoMatchingBay() {
               <div className="grid grid-cols-2 gap-3">
                 {photos.map(photo => {
                   const folder = client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || '00000000-0000-0000-0000-000000000000');
-                  const url = supabase.storage.from('manifest_gallery').getPublicUrl(`${folder}/${photo.name}`).data.publicUrl;
+                  const url = supabase.storage.from('manifest_gallery').getPublicUrl(\`\${folder}/\${photo.name}\`).data.publicUrl;
                   const isSelected = selectedPhoto?.name === photo.name;
                   return (
                     <div 
                       key={photo.name} 
                       onClick={() => setSelectedPhoto(isSelected ? null : photo)}
-                      className={`border-2 rounded shadow-sm overflow-hidden cursor-pointer transition-all relative ${isSelected ? 'border-[var(--theme-accent)] ring-2 ring-[var(--theme-accent)] ring-opacity-50' : 'border-transparent hover:border-gray-300 bg-white'}`}
+                      className={\`border-2 rounded shadow-sm overflow-hidden cursor-pointer transition-all relative \${isSelected ? 'border-[var(--theme-accent)] ring-2 ring-[var(--theme-accent)] ring-opacity-50' : 'border-transparent hover:border-gray-300 bg-white'}\`}
                     >
                       <img src={url} alt={photo.name} className="w-full h-24 object-cover" />
                       {isSelected && (
@@ -202,7 +204,7 @@ export function PhotoMatchingBay() {
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded border-2 border-white shadow-sm overflow-hidden">
                 <img 
-                  src={supabase.storage.from('manifest_gallery').getPublicUrl(`${client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || '00000000-0000-0000-0000-000000000000')}/${selectedPhoto.name}`).data.publicUrl} 
+                  src={supabase.storage.from('manifest_gallery').getPublicUrl(\`\${client?.id?.includes('fallback') ? '00000000-0000-0000-0000-000000000000' : (client?.id || '00000000-0000-0000-0000-000000000000')}/\${selectedPhoto.name}\`).data.publicUrl} 
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -232,7 +234,7 @@ export function PhotoMatchingBay() {
 
         <div className="flex-1 overflow-y-auto p-4">
           {(successMsg || errorMsg) && (
-            <div className={`p-3 mb-4 rounded text-sm font-medium ${successMsg ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+            <div className={\`p-3 mb-4 rounded text-sm font-medium \${successMsg ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}\`}>
               {successMsg || errorMsg}
             </div>
           )}
@@ -241,7 +243,7 @@ export function PhotoMatchingBay() {
             {filteredProducts.map(product => (
               <div 
                 key={product.id}
-                className={`border rounded-lg p-3 flex gap-3 transition-all ${selectedPhoto ? 'hover:border-[var(--theme-accent)] hover:shadow-md cursor-pointer bg-white' : 'opacity-70 bg-gray-50 grayscale'}`}
+                className={\`border rounded-lg p-3 flex gap-3 transition-all \${selectedPhoto ? 'hover:border-[var(--theme-accent)] hover:shadow-md cursor-pointer bg-white' : 'opacity-70 bg-gray-50 grayscale'}\`}
                 onClick={() => selectedPhoto && handleMatch(product)}
               >
                 <div className="flex-1 min-w-0">
@@ -272,3 +274,6 @@ export function PhotoMatchingBay() {
     </div>
   );
 }
+`
+
+fs.writeFileSync('src/pages/PhotoMatchingBay.tsx', newContent);

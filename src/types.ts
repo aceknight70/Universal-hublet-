@@ -16,8 +16,8 @@ export interface Database {
           } | any;
           created_at: string;
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
       manifest_brands: {
         Row: {
@@ -25,8 +25,8 @@ export interface Database {
           name: string;
           logo_url: string | null;
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
       manifest_client_brands: {
         Row: {
@@ -37,8 +37,8 @@ export interface Database {
           display_order: number;
           is_assigned: boolean;
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
       manifest_staff: {
         Row: {
@@ -48,8 +48,8 @@ export interface Database {
           role: Role;
           email?: string; // used for auth mapping
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
       manifest_products: {
         Row: {
@@ -73,8 +73,8 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
       manifest_client_product_overrides: {
         Row: {
@@ -85,8 +85,19 @@ export interface Database {
           featured: boolean;
           preset_tags: string[] | null;
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
+      };
+      manifest_product_images: {
+        Row: {
+          id: string;
+          product_id: string;
+          slot: string;
+          image_url: string;
+          created_at: string;
+        };
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
       manifest_photo_inbox: {
         Row: {
@@ -96,8 +107,8 @@ export interface Database {
           status: string;
           created_at: string;
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
       manifest_brand_ads: {
         Row: {
@@ -109,8 +120,8 @@ export interface Database {
           cta: string;
           active: boolean;
         };
-        Insert: any;
-        Update: any;
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
       };
     };
     Views: Record<string, never>;
