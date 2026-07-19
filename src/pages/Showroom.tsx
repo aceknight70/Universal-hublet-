@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../hooks/useStore';
-import { useDeviceState } from '../hooks/useDeviceState';
+import { useAuth } from '../hooks/useAuth';
 import { Brand, Product, SHARED_CATEGORIES } from '../types';
 import { cn } from '../lib/utils';
 import { ProductCard } from '../components/ProductCard';
@@ -10,7 +10,8 @@ import { Plus } from 'lucide-react';
 
 export function Showroom() {
   const { client } = useStore();
-  const { viewMode } = useDeviceState();
+  const { profile } = useAuth();
+  const viewMode = profile?.role || 'customer';
   const [brands, setBrands] = useState<(Brand & { tier: number, display_order: number })[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
