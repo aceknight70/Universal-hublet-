@@ -22,7 +22,6 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
     { name: 'AI Desk', path: 'ai-desk' },
     { name: 'Channels', path: 'channels' },
     { name: 'Live Sheet', path: 'live-sheet' },
-    { name: 'Spotlight', path: 'spotlight' },
     { name: 'Pickup & Dispatch', path: 'pickup-dispatch' },
     { name: 'Warranty', path: 'warranty' },
     { name: 'Contact', path: 'contact' },
@@ -39,20 +38,22 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
 
   const managerLinks = [
     { name: 'Manager Room', path: 'manager' },
-    
+    { name: 'Sheet Manager', path: 'sheet-manager' },
   ];
 
   const masterLinks = [
     { name: 'Master Room', path: 'master' },
+    { name: 'Spotlight Config', path: 'spotlight' },
   ];
 
   const isStaff = ['staff', 'manager', 'master'].includes(viewMode);
   const isManager = ['manager', 'master'].includes(viewMode);
   const isMaster = viewMode === 'master';
-
   const isSheetManagerActive = currentPath === 'sheet-manager';
+
   const NavGroup = ({ title, links, isHighlighted = false }: { title: string, links: any[], isHighlighted?: boolean }) => {
     const [isOpen, setIsOpen] = useState(false);
+
     return (
       <div className="relative inline-block" onMouseLeave={() => setIsOpen(false)}>
         <button 
@@ -85,21 +86,45 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 md:gap-6 pb-1 max-w-full">
-      <NavGroup title="Customer Rooms" links={customerLinks} />
-      {isStaff && <NavGroup title="Staff Modules" links={staffLinks} isHighlighted={viewMode === 'staff'} />}
-      {isManager && <NavGroup title="Manager Modules" links={managerLinks} isHighlighted={viewMode === 'manager' && !isSheetManagerActive} />}
-      {isManager && (
-        <Link 
-          to={`/${clientSlug}/sheet-manager`}
-          className={`text-sm font-bold whitespace-nowrap px-3 py-1.5 rounded-md border-2 transition-all ${isSheetManagerActive ? 'bg-black/10' : 'hover:bg-black/5'}`}
-          style={{ color: headerTextColor, borderColor: headerTextColor }}
-        >
-          Sheet Manager
-        </Link>
+    <div className="flex flex-col w-full">
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+
+      {/* Admin Modules (Dropdown Row) */}
+      {isStaff && (
+        <div className="flex flex-wrap items-center gap-3 md:gap-4 px-4 md:px-6 py-2.5">
+          <NavGroup title="Staff Modules" links={staffLinks} isHighlighted={viewMode === 'staff'} />
+          {isManager && <NavGroup title="Manager Modules" links={managerLinks} isHighlighted={viewMode === 'manager' || isSheetManagerActive} />}
+          {isMaster && <NavGroup title="Master Modules" links={masterLinks} isHighlighted={viewMode === 'master' || currentPath === 'spotlight'} />}
+        </div>
       )}
 
-      {isMaster && <NavGroup title="Master Modules" links={masterLinks} isHighlighted={true} />}
+      {/* Customer Rooms (Scrollable Horizontal Bar) */}
+      <div 
+        className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full bg-[#111111] py-3 px-4 md:px-6"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {customerLinks.map(link => {
+          const isActive = currentPath === link.path || (currentPath === clientSlug && link.path === '');
+          return (
+            <Link
+              key={link.path}
+              to={`/${clientSlug}/${link.path}`}
+              className={`text-sm font-medium whitespace-nowrap px-4 py-1.5 rounded-full transition-colors flex-shrink-0`}
+              style={{ 
+                backgroundColor: isActive ? headerTextColor : 'transparent',
+                color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
+                border: isActive ? 'none' : '1px solid rgba(255, 255, 255, 0.1)'
+              }}
+            >
+              {link.name}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

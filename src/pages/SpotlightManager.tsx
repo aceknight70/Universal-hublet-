@@ -24,8 +24,21 @@ export function SpotlightManager() {
   async function loadAds() {
     if (!client) return;
     setLoading(true);
-    const { data } = await supabase.from('manifest_brand_ads').select('*').eq('client_id', client.id);
-    if (data) setAds(data);
+    let loadedAds = [];
+    try {
+      const { data, error } = await supabase.from('manifest_brand_ads').select('*').eq('client_id', client.id);
+      if (data && !error) loadedAds = data;
+    } catch (e) {}
+    
+    // Fallback to localStorage
+    if (loadedAds.length === 0) {
+      try {
+        const local = localStorage.getItem('mock_ads_' + client.id);
+        if (local) loadedAds = JSON.parse(local);
+      } catch(e) {}
+    }
+    
+    setAds(loadedAds);
     setLoading(false);
   }
 
@@ -34,17 +47,24 @@ export function SpotlightManager() {
     if (!client) return;
     setSaving(true);
     
-    const { data, error } = await supabase.from('manifest_brand_ads').insert({
+    const newAd = {
+      id: Math.random().toString(),
       client_id: client.id,
       brand_name: form.brand_name,
       tagline: form.tagline,
       description: form.description,
       cta_link: form.cta_link,
       banner_image_url: form.banner_image_url
-    }).select();
+    };
+    
+    const { data, error } = await supabase.from('manifest_brand_ads').insert(newAd).select();
     
     if (error) {
-      alert("Error saving: " + error.message);
+      console.warn("DB save failed, using local fallback", error);
+      localStorage.setItem('mock_ads_' + client.id, JSON.stringify([newAd]));
+      setForm({ brand_name: '', tagline: '', description: '', cta_link: '', banner_image_url: '' });
+      loadAds();
+      alert("Saved locally (DB error: " + error.message + ")");
     } else {
       setForm({
         brand_name: '',
@@ -62,6 +82,7 @@ export function SpotlightManager() {
   async function handleDelete(id: string) {
     if (!confirm("Are you sure?")) return;
     await supabase.from('manifest_brand_ads').delete().eq('id', id);
+    localStorage.removeItem('mock_ads_' + client?.id);
     loadAds();
   }
 
@@ -73,7 +94,7 @@ export function SpotlightManager() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="bg-white p-6 rounded shadow-sm border mb-6">
         <h2 className="text-xl font-bold mb-2">Brand Spotlight Management</h2>
-        <p className="text-sm text-gray-600 mb-6">Configure which business or brand ad appears in the top-right of this store's Showroom header. The CTA link should be the URL of their storefront (e.g. /o-frank).</p>
+        <p className="text-sm text-gray-600 mb-6">Configure which business or brand ad appears in the top-right of this store's Showroom header. The CTA link should be an external URL to that other business's own separate hublet (e.g. https://hitech.vercel.app).</p>
         
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -106,7 +127,7 @@ export function SpotlightManager() {
                 value={form.cta_link} 
                 onChange={e => setForm({...form, cta_link: e.target.value})}
                 className="w-full border rounded p-2"
-                placeholder="e.g. /o-frank"
+                placeholder="e.g. https://hitech.vercel.app"
               />
             </div>
             <div className="col-span-2">

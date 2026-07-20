@@ -70,8 +70,17 @@ function StoreContent() {
   useEffect(() => {
     if (client?.id) {
       supabase.from('manifest_brand_ads').select('*').eq('client_id', client.id)
-        .then(({data}) => {
-          if (data) setAds(data);
+        .then(({data, error}) => {
+          if (data && data.length > 0 && !error) {
+            setAds(data);
+          } else {
+            const local = localStorage.getItem('mock_ads_' + client.id);
+            if (local) {
+              try { setAds(JSON.parse(local)); } catch(e) {}
+            } else {
+              setAds([]);
+            }
+          }
         });
     }
   }, [client]);
@@ -156,6 +165,8 @@ function StoreContent() {
               <a 
                 key={ad.id}
                 href={ad.cta_link}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center space-x-2 px-3 py-2 rounded bg-black/5 hover:bg-black/10 transition-colors flex-shrink-0"
                 style={{ color: headerTextColor }}
                 title={ad.description}
@@ -169,11 +180,21 @@ function StoreContent() {
                 </div>
               </a>
             ))}
+            {ads.length === 0 && (viewMode === 'master' || viewMode === 'manager') && (
+              <Link
+                to={`/${client.slug}/spotlight`}
+                className="flex items-center justify-center px-3 py-2 border-2 border-dashed rounded text-xs font-bold transition-colors hover:bg-black/5 flex-shrink-0"
+                style={{ color: headerTextColor, borderColor: headerTextColor, opacity: 0.6 }}
+                title="This space is for Business Spotlight banners"
+              >
+                + Add Business Spotlight Ad
+              </Link>
+            )}
           </div>
         </div>
         
         {/* Navigation Row */}
-        <div className="px-4 md:px-6 pb-3 pt-2 border-t border-black/5 w-full">
+        <div className="border-t border-black/5 w-full">
           <StoreNavigation clientSlug={client.slug} viewMode={viewMode} headerTextColor={headerTextColor} />
         </div>
       </header>

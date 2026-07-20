@@ -16,7 +16,7 @@ export function Showroom() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
+  const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -64,9 +64,9 @@ export function Showroom() {
       }
 
       // Load products
-      let query = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)');
-      if (selectedBrandId) {
-        query = query.eq('brand_id', selectedBrandId);
+      let query = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)').eq('client_id', client.id);
+      if (selectedBrandIds.length > 0) {
+        query = query.in('brand_id', selectedBrandIds);
       }
       if (selectedCategory) {
         query = query.eq('category', selectedCategory);
@@ -109,7 +109,7 @@ export function Showroom() {
     }
     
     loadData();
-  }, [client, selectedBrandId, selectedCategory]);
+  }, [client, selectedBrandIds.join(","), selectedCategory]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -129,18 +129,18 @@ export function Showroom() {
       <div className="bg-white border-b overflow-x-auto whitespace-nowrap p-4 scrollbar-hide">
         <div className="flex space-x-4 items-center">
           <button 
-            onClick={() => setSelectedBrandId(null)}
+            onClick={() => setSelectedBrandIds([])}
             className={cn(
               "flex items-center space-x-3 border rounded-xl overflow-hidden transition-all flex-shrink-0 bg-white",
-              !selectedBrandId ? "ring-2 ring-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-200 hover:border-gray-300",
+              selectedBrandIds.length === 0 ? "ring-2 ring-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-200 hover:border-gray-300",
               "h-14 px-5"
             )}
           >
             <div className={cn(
               "w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
-              !selectedBrandId ? "bg-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-300"
+              selectedBrandIds.length === 0 ? "bg-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-300"
             )}>
-              {!selectedBrandId && (
+              {selectedBrandIds.length === 0 && (
                 <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
@@ -148,29 +148,38 @@ export function Showroom() {
             </div>
             <span className={cn("font-medium text-gray-800 text-base")}>All Brands</span>
           </button>
-          {brands.map(b => (
-            <button
-              key={b.id}
-              onClick={() => setSelectedBrandId(b.id === selectedBrandId ? null : b.id)}
-              className={cn(
-                "flex items-center space-x-3 border rounded-xl overflow-hidden transition-all flex-shrink-0 bg-white",
-                b.id === selectedBrandId ? "ring-2 ring-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-200 hover:border-gray-300",
-                "h-14 px-5"
-              )}
-            >
-              <div className={cn(
-                "w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
-                b.id === selectedBrandId ? "bg-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-300"
-              )}>
-                {b.id === selectedBrandId && (
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
+          {brands.map(b => {
+            const isSelected = selectedBrandIds.includes(b.id);
+            return (
+              <button
+                key={b.id}
+                onClick={() => {
+                  if (isSelected) {
+                    setSelectedBrandIds(selectedBrandIds.filter(id => id !== b.id));
+                  } else {
+                    setSelectedBrandIds([...selectedBrandIds, b.id]);
+                  }
+                }}
+                className={cn(
+                  "flex items-center space-x-3 border rounded-xl overflow-hidden transition-all flex-shrink-0 bg-white",
+                  isSelected ? "ring-2 ring-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-200 hover:border-gray-300",
+                  "h-14 px-5"
                 )}
-              </div>
-              <span className={cn("font-medium text-gray-800 text-base")}>{b.name}</span>
-            </button>
-          ))}
+              >
+                <div className={cn(
+                  "w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
+                  isSelected ? "bg-[var(--theme-accent)] border-[var(--theme-accent)]" : "border-gray-300"
+                )}>
+                  {isSelected && (
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className={cn("font-medium text-gray-800 text-base")}>{b.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

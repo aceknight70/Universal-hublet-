@@ -1,6 +1,0 @@
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
-const { data, error } = await supabase.from('manifest_brand_ads').select('*').limit(1);
-console.log(data, error);
