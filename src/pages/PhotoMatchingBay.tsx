@@ -96,12 +96,13 @@ export function PhotoMatchingBay() {
         .getPublicUrl(newPath);
       
       // Insert into product images
-      // @ts-ignore
-      const { error: dbError } = await supabase.from('manifest_product_images').upsert({
+      // Delete first to avoid constraint issues
+      await supabase.from('manifest_product_images').delete().match({ product_id: product.id, slot: slot });
+      const { error: dbError } = await supabase.from('manifest_product_images').insert({
         product_id: product.id,
         slot: slot,
         image_url: publicUrlData.publicUrl
-      } as any, { onConflict: 'product_id,slot' });
+      } as any);
       
       if (dbError) throw dbError;
       

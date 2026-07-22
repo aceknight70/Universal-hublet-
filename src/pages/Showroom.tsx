@@ -64,7 +64,8 @@ export function Showroom() {
       }
 
       // Load products
-      let query = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)').eq('client_id', client.id);
+      // Load products (global across all skins)
+      let query = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)');
       if (selectedBrandIds.length > 0) {
         query = query.in('brand_id', selectedBrandIds);
       }

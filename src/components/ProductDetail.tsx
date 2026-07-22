@@ -117,11 +117,12 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
         if ((editedProduct as any)[slot]) {
           const dbSlot = slot.replace('_image', '');
           // @ts-ignore
-          const { error } = await supabase.from('manifest_product_images').upsert({
+          await supabase.from('manifest_product_images').delete().match({ product_id: savedProductData.id, slot: dbSlot });
+          const { error } = await supabase.from('manifest_product_images').insert({
             product_id: savedProductData.id,
             slot: dbSlot,
             image_url: (editedProduct as any)[slot]
-          } as any, { onConflict: 'product_id,slot' });
+          } as any);
           
           if (error) {
             imageError = error;
@@ -175,8 +176,29 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
          .getPublicUrl(filePath);
 
        const newUrl = publicUrlData.publicUrl;
-       setEditedProduct({ ...editedProduct, [slotKey]: newUrl });
-       setActivePhoto(newUrl);
+      setEditedProduct({ ...editedProduct, [slotKey]: newUrl });
+      setActivePhoto(newUrl);
+
+      // Auto-save the photo immediately if the product already exists
+      if (!isNew && product.id && product.id !== 'new') {
+        const dbSlot = slotKey.replace('_image', '');
+        // Delete existing slot image to avoid constraint issues, then insert
+        await supabase.from('manifest_product_images').delete().match({ product_id: product.id, slot: dbSlot });
+        const { error: linkError } = await supabase.from('manifest_product_images').insert({
+          product_id: product.id,
+          slot: dbSlot,
+          image_url: newUrl
+        } as any);
+        
+        if (!linkError) {
+          onUpdate({ ...product, [slotKey]: newUrl } as any);
+          setSuccessMsg("Photo auto-saved.");
+          setTimeout(() => setSuccessMsg(null), 3000);
+        } else {
+          console.error("Auto-save photo error:", linkError);
+          alert("Photo uploaded, but auto-save failed: " + linkError.message);
+        }
+      }
      } catch (err: any) {
        alert("Upload failed: " + err.message);
      }
