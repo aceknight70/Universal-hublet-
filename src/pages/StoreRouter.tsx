@@ -14,6 +14,7 @@ import { Placeholder } from './Placeholders';
 import { SpotlightManager } from './SpotlightManager';
 import { InvoiceReceiptGenerator } from './Invoice';
 import { PhotoMatchingBay } from './PhotoMatchingBay';
+import { Gallery } from './Gallery';
 import { StoreNavigation } from '../components/Navigation';
 
 
@@ -116,20 +117,9 @@ function StoreContent() {
             
             <div className="flex items-center space-x-2 md:space-x-4" style={{ borderColor: headerTextColor }}>
             <div className="flex items-center space-x-2">
-              <span className="text-xs uppercase tracking-wider hidden md:inline-block" style={{ color: headerTextColor, opacity: 0.6 }}>Store:</span>
-              <select 
-                value={client.slug}
-                onChange={e => {
-                  window.location.href = `/${e.target.value}`;
-                }}
-                className="text-xs border border-white border-opacity-20 rounded p-1 bg-transparent max-w-[100px] md:max-w-none"
-                style={{ color: headerTextColor }}
-              >
-                <option value="ugomenz" className="text-black">Ugomenz</option>
-                <option value="o-frank" className="text-black">O Frank</option>
-                <option value="allsufficiency" className="text-black">AllSufficiency</option>
-                <option value="linz" className="text-black">Linz</option>
-              </select>
+              <span className="text-xs uppercase tracking-wider font-semibold opacity-90 px-2 py-0.5 rounded border border-white/20" style={{ color: headerTextColor }}>
+                Official O Frank Hublet
+              </span>
             </div>
             <div className="flex items-center space-x-2 md:border-l md:pl-4 border-opacity-20" style={{ borderColor: headerTextColor }}>
               {user ? (
@@ -205,7 +195,7 @@ function StoreContent() {
           <Route path="/display-floor" element={<Showroom tagFilter="display_floor" />} />
           <Route path="/hot-deals" element={<Showroom tagFilter="hot_deal" />} />
           <Route path="/videos" element={<Placeholder title="Videos" />} />
-          <Route path="/gallery" element={<Placeholder title="Gallery" />} />
+          <Route path="/gallery" element={<Gallery />} />
           <Route path="/ai-desk" element={<Placeholder title="AI Desk" />} />
           <Route path="/channels" element={<Placeholder title="Channels" />} />
           <Route path="/live-sheet" element={<Showroom tagFilter="live_sheet" />} />
@@ -246,7 +236,7 @@ export function AppRouter() {
   return (
     <Routes>
       <Route path="/:storeSlug/*" element={<StoreLayout />} />
-      <Route path="/" element={<Navigate to="/ugomenz" replace />} />
+      <Route path="/" element={<Navigate to="/ofrank" replace />} />
     </Routes>
   );
 }

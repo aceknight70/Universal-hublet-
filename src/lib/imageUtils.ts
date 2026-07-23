@@ -1,14 +1,25 @@
-export async function compressImage(file: File, maxWidth = 1600): Promise<File> {
+export async function compressImage(
+  file: File,
+  maxDimension = 1200,
+  quality = 0.85
+): Promise<File> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.src = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    img.src = objectUrl;
     img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
       let width = img.width;
       let height = img.height;
 
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width = maxWidth;
+      if (width > maxDimension || height > maxDimension) {
+        if (width >= height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
       }
 
       const canvas = document.createElement('canvas');
@@ -22,17 +33,25 @@ export async function compressImage(file: File, maxWidth = 1600): Promise<File> 
 
       ctx.drawImage(img, 0, 0, width, height);
 
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          return resolve(file); // Fallback
-        }
-        const newFile = new File([blob], file.name, {
-          type: 'image/jpeg',
-          lastModified: Date.now(),
-        });
-        resolve(newFile);
-      }, 'image/jpeg', 0.8); // 80% quality JPEG
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            return resolve(file); // Fallback
+          }
+          const newFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          resolve(newFile);
+        },
+        'image/jpeg',
+        quality
+      );
     };
-    img.onerror = (err) => reject(err);
+    img.onerror = (err) => {
+      URL.revokeObjectURL(objectUrl);
+      reject(err);
+    };
   });
 }
+

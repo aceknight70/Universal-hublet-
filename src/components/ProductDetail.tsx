@@ -163,7 +163,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
      // Since we can't reliably predict storage RLS here, we'll do the actual upload if possible
      try {
        const fileExt = file.name.split('.').pop();
-       const folder = client?.id?.includes("fallback") ? "00000000-0000-0000-0000-000000000000" : (client?.id || "00000000-0000-0000-0000-000000000000");
+       const folder = client?.id || 'ofrank';
       const fileName = `${folder}/${product.id}_${slotKey}_${Math.random()}.${fileExt}`;
        const filePath = `${fileName}`;
 

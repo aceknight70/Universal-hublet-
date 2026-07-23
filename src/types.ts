@@ -174,6 +174,29 @@ export interface Database {
         Insert: Record<string, any>;
         Update: Record<string, any>;
       };
+      manifest_gallery: {
+        Row: {
+          id: string;
+          client_id: string;
+          photo_url: string;
+          caption: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          photo_url: string;
+          caption?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          photo_url?: string;
+          caption?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

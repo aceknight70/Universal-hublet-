@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, ACTIVE_CLIENT_ID, ACTIVE_CLIENT_SLUG } from '../lib/supabase';
 import { Client } from '../types';
 
 interface StoreContextType {
@@ -10,8 +10,22 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType>({ client: null, loading: true, error: null });
 
-export function StoreProvider({ slug, children }: { slug: string; children: ReactNode }) {
-  const [client, setClient] = useState<Client | null>(null);
+const OFRANK_DEFAULT: Client = {
+  id: ACTIVE_CLIENT_ID,
+  name: 'O Frank Electronics',
+  slug: ACTIVE_CLIENT_SLUG,
+  categories: [],
+  theme: {
+    accent_color: '#2B5FD9',
+    background_color: '#f9fafb',
+    header_background_color: '#ffffff',
+    header_text_color: '#2B5FD9'
+  },
+  created_at: new Date().toISOString()
+};
+
+export function StoreProvider({ children }: { slug?: string; children: ReactNode }) {
+  const [client, setClient] = useState<Client | null>(OFRANK_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -23,23 +37,17 @@ export function StoreProvider({ slug, children }: { slug: string; children: Reac
         let { data, error: dbError } = await supabase
           .from('manifest_clients')
           .select('*')
-          .eq('slug', slug)
+          .or(`slug.eq.${ACTIVE_CLIENT_SLUG},id.eq.${ACTIVE_CLIENT_ID}`)
           .maybeSingle();
 
-        if (dbError) throw dbError;
+        if (dbError) console.warn("DB query for client failed, using default O Frank client:", dbError);
+        
         if (!data) {
-          // Fallback to mock data if the database is empty/unseeded
-          const fallbackClients: Record<string, any> = {
-            'ugomenz': { id: '11111111-1111-1111-1111-111111111111', name: 'Ugomenz Electronics', slug: 'ugomenz', categories: [], theme: { accent_color: '#E8622C' }, created_at: new Date().toISOString() },
-            'o-frank': { id: '22222222-2222-2222-2222-222222222222', name: 'O Frank Electronics', slug: 'o-frank', categories: [], theme: { accent_color: '#2B5FD9' }, created_at: new Date().toISOString() },
-            'allsufficiency': { id: '33333333-3333-3333-3333-333333333333', name: 'AllSufficiency (ORB)', slug: 'allsufficiency', categories: [], theme: { accent_color: '#C0392B' }, created_at: new Date().toISOString() },
-            'linz': { id: '44444444-4444-4444-4444-444444444444', name: 'Linz Electronics', slug: 'linz', categories: [], theme: { accent_color: '#6F4E37' }, created_at: new Date().toISOString() }
-          };
-          if (fallbackClients[slug]) {
-            data = fallbackClients[slug];
-          } else {
-            throw new Error(`Store not found: ${slug}. Please ensure the store exists in the database.`);
-          }
+          data = OFRANK_DEFAULT as any;
+        } else {
+          // Force id & slug to match our deployment's hardcoded identifier
+          (data as any).id = ACTIVE_CLIENT_ID;
+          (data as any).slug = ACTIVE_CLIENT_SLUG;
         }
         
         // Parse JSON fields if they come as strings
@@ -49,24 +57,20 @@ export function StoreProvider({ slug, children }: { slug: string; children: Reac
           } catch(e) {}
         }
 
-
-
         setClient(data as any);
       } catch (err: any) {
-        console.error('Failed to load store:', err);
-        setError(err);
+        console.warn('Fallback to O Frank default due to error:', err);
+        setClient(OFRANK_DEFAULT);
       } finally {
         setLoading(false);
       }
     }
 
-    if (slug) {
-      loadStore();
-    }
-  }, [slug]);
+    loadStore();
+  }, []);
 
   return (
-    <StoreContext.Provider value={{ client, loading, error }}>
+    <StoreContext.Provider value={{ client: client || OFRANK_DEFAULT, loading, error }}>
       {children}
     </StoreContext.Provider>
   );
