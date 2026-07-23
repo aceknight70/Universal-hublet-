@@ -21,6 +21,7 @@ export interface GalleryRecord {
   id: string;
   client_id: string;
   photo_url: string;
+  thumbnail_url?: string;
   caption: string; // JSON string containing { product_name, spec, price, thumbnail_url }
   created_at: string;
 }
@@ -75,7 +76,7 @@ export function Gallery() {
     return {
       id: rec.id,
       photo_url: rec.photo_url,
-      thumbnail_url: parsed.thumbnail_url || rec.photo_url,
+      thumbnail_url: rec.thumbnail_url || parsed.thumbnail_url || rec.photo_url,
       product_name: parsed.product_name || 'O Frank Featured Item',
       spec: parsed.spec || '',
       price: typeof parsed.price === 'number' ? parsed.price : (parsed.price ? parseFloat(parsed.price) : null),
@@ -134,8 +135,8 @@ export function Gallery() {
   async function uploadDualImages(file: File): Promise<{ fullUrl: string; thumbUrl: string }> {
     // Generate thumbnail (600px max edge)
     const thumbFile = await compressImage(file, 600, 0.80);
-    // Generate full size (1200px max edge)
-    const fullFile = await compressImage(file, 1200, 0.88);
+    // Generate full size (1200px max edge), high quality to preserve sharpness
+    const fullFile = await compressImage(file, 1200, 0.90);
 
     const timestamp = Date.now();
     const rand = Math.random().toString(36).substring(7);
@@ -188,7 +189,7 @@ export function Gallery() {
       // Upload dual sizes
       const { fullUrl, thumbUrl } = await uploadDualImages(formFile);
 
-      // Create JSON payload
+      // Create JSON payload (we'll keep thumbnail_url in here as well for fallback)
       const captionPayload = JSON.stringify({
         product_name: formName.trim() || 'O Frank Featured Item',
         spec: formSpec.trim(),
@@ -196,12 +197,22 @@ export function Gallery() {
         thumbnail_url: thumbUrl
       });
 
-      // Insert record into Supabase manifest_gallery
-      const { error: insertErr } = await (supabase as any).from('manifest_gallery').insert({
+      // Check if the thumbnail_url column exists in the database
+      const { error: colCheckErr } = await (supabase as any).from('manifest_gallery').select('thumbnail_url').limit(1);
+      const hasThumbnailColumn = !colCheckErr || colCheckErr.code !== '42703';
+
+      const payload: any = {
         client_id: folder,
         photo_url: fullUrl,
         caption: captionPayload
-      });
+      };
+
+      if (hasThumbnailColumn) {
+        payload.thumbnail_url = thumbUrl;
+      }
+
+      // Insert record into Supabase manifest_gallery
+      const { error: insertErr } = await (supabase as any).from('manifest_gallery').insert(payload);
 
       if (insertErr) throw insertErr;
 
@@ -255,13 +266,23 @@ export function Gallery() {
         thumbnail_url: thumbUrl
       });
 
+      // Check if the thumbnail_url column exists in the database
+      const { error: colCheckErr } = await (supabase as any).from('manifest_gallery').select('thumbnail_url').limit(1);
+      const hasThumbnailColumn = !colCheckErr || colCheckErr.code !== '42703';
+
+      const payload: any = {
+        photo_url: fullUrl,
+        caption: captionPayload
+      };
+
+      if (hasThumbnailColumn) {
+        payload.thumbnail_url = thumbUrl;
+      }
+
       // Commit changes back to manifest_gallery in Supabase
       const { error: updateErr } = await (supabase as any)
         .from('manifest_gallery')
-        .update({
-          photo_url: fullUrl,
-          caption: captionPayload
-        })
+        .update(payload)
         .eq('id', selectedItem.id);
 
       if (updateErr) throw updateErr;
@@ -405,8 +426,7 @@ export function Gallery() {
           </button>
         </div>
       ) : (
-        /* RULE 3: In the small gallery grid: PHOTO ONLY. No price, no product name overlay, no text clutter. */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-4">
+        <div className="flex flex-col gap-8 sm:gap-12 max-w-[1000px] mx-auto w-full">
           {items.map((item) => (
             <div
               key={item.id}
@@ -414,15 +434,15 @@ export function Gallery() {
                 setSelectedItem(item);
                 setIsEditing(false);
               }}
-              className="group relative aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200/80 cursor-pointer shadow-xs hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+              className="group relative w-full bg-gray-100 rounded-2xl sm:rounded-3xl overflow-hidden border border-gray-200/50 cursor-pointer shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
             >
               <img
-                src={item.thumbnail_url || item.photo_url}
+                src={item.photo_url}
                 alt=""
                 loading="lazy"
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                className="w-full h-auto object-cover transform group-hover:scale-[1.02] transition-transform duration-500 ease-out"
               />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300 pointer-events-none" />
             </div>
           ))}
         </div>
