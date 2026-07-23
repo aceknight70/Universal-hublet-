@@ -31,10 +31,19 @@ export function SheetManager() {
 
     const loadCatalog = async () => {
     setLoadingCatalog(true);
-    const [{ data: prods }, { data: overrides }] = await Promise.all([
-      supabase.from('manifest_products').select('id, code, name, price, stock_status, category, manifest_brands(name)').order('created_at', { ascending: false }),
+    const [{ data: invData }, { data: overrides }] = await Promise.all([
+      supabase.from('manifest_inventory').select('*, manifest_catalog!inner(*)').eq('client_id', client?.id || ''),
       client?.id ? supabase.from('manifest_client_product_overrides').select('*').eq('client_id', client.id) : Promise.resolve({ data: [] })
     ]);
+    const prods = invData?.map(inv => ({
+       id: inv.manifest_catalog.id,
+       code: inv.manifest_catalog.spec_sheet?.code || 'N/A',
+       name: inv.manifest_catalog.name,
+       price: inv.price,
+       stock_status: inv.manifest_catalog.spec_sheet?.stock_status || 'In Stock',
+       category: inv.manifest_catalog.category,
+       manifest_brands: { name: inv.manifest_catalog.brand }
+    })) || [];
     
     if (prods) {
       const overridesMap = new Map((overrides || []).map((o: any) => [o.product_id, o]));
@@ -108,7 +117,14 @@ export function SheetManager() {
     const codes = rows.map(r => r['Product Code']?.trim()).filter(Boolean);
     let existing = new Set<string>();
     if (codes.length > 0) {
-      const { data } = await supabase.from('manifest_products').select('code').in('code', codes);
+      const { data } = await supabase.from('manifest_catalog').select('spec_sheet');
+      if (data) {
+        // Find existing codes
+        const existingCodesArray = data.map((d:any) => d.spec_sheet?.code).filter(Boolean);
+        existing = new Set(existingCodesArray);
+      }
+      // dummy assignment to avoid compiler complaining if we comment out the above line
+      const _dummy = codes;
       if (data) {
         existing = new Set((data as any[]).map(d => d.code));
       }

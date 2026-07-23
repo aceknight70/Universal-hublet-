@@ -75,8 +75,8 @@ export function Showroom({ tagFilter }: { tagFilter?: string }) {
       }
       
       const { data: invData, error } = await query;
-      if (error) {
-         console.warn("Inventory fetch failed, falling back to legacy products", error);
+      if (error || !invData || invData.length === 0) {
+         console.warn("Inventory empty or fetch failed, falling back to legacy products", error);
          
          // FALLBACK to old manifest_products table if inventory fails
          let fallbackQuery = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)');
@@ -86,7 +86,8 @@ export function Showroom({ tagFilter }: { tagFilter?: string }) {
          if (selectedCategory) {
            fallbackQuery = fallbackQuery.eq('category', selectedCategory);
          }
-         const { data: prodData } = await fallbackQuery;
+         const { data: prodData, error: fallbackError } = await fallbackQuery;
+         if (fallbackError) console.error("Fallback query failed:", fallbackError);
          if (prodData) {
            const productsWithImages = prodData.map((p: any) => {
              const formatted = { ...p };
