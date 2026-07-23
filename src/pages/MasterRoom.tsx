@@ -18,9 +18,8 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
         const client = clients.find(c => c.id === selectedClientId);
         if (client) {
            let parsed = {} as any;
-           try {
-              parsed = typeof client.theme === 'string' ? JSON.parse(client.theme) : (client.theme || {});
-           } catch(e) {}
+           
+              try { parsed = typeof client.theme === 'string' ? JSON.parse(client.theme) : (client.theme || {}); } catch(e) {}
            setThemeDraft({
               accent_color: parsed.accent_color || '#000000',
               background_color: parsed.background_color || '#f9fafb',
@@ -36,7 +35,7 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
   const handleSave = async () => {
      if (!selectedClientId || !themeDraft) return;
      setIsSaving(true);
-     try {
+     
         const client = clients.find(c => c.id === selectedClientId);
         if (!client) throw new Error("Client not found");
 
@@ -44,16 +43,13 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
         
         const newThemeStr = JSON.stringify(themeDraft);
         
+      try {
         if (!isFallback) {
           // @ts-ignore
 const { error } = await supabase.from('manifest_clients').update({ theme: themeDraft }).eq('id', selectedClientId);
           if (error) throw error;
         } else {
-          // For fallbacks, save to localStorage so it persists visually
-          const existingStr = localStorage.getItem('manifest_theme_overrides') || '{}';
-          const existing = JSON.parse(existingStr);
-          existing[client.slug] = themeDraft;
-          localStorage.setItem('manifest_theme_overrides', JSON.stringify(existing));
+          
         }
 
         setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeDraft } : c));
@@ -179,21 +175,7 @@ export function MasterRoom() {
         { id: 'fallback-4', name: 'Linz Electronics', slug: 'linz', categories: [], theme: { accent_color: '#6F4E37' }, created_at: new Date().toISOString() }
       ] as any[];
 
-      // Apply overrides
-      try {
-        const overridesStr = localStorage.getItem('manifest_theme_overrides');
-        if (overridesStr) {
-          const overrides = JSON.parse(overridesStr);
-          loadedClients = loadedClients.map(c => {
-             if (overrides[c.slug]) {
-                const existingTheme = typeof c.theme === 'string' ? JSON.parse(c.theme) : (c.theme || {});
-                return { ...c, theme: { ...existingTheme, ...overrides[c.slug] } };
-             }
-             return c;
-          });
-        }
-      } catch(e) {}
-
+     // Apply overrides
       setClients(loadedClients);
     }
     load();
@@ -215,7 +197,8 @@ export function MasterRoom() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {clients.map(c => {
              let accent = '#000';
-             try {
+             
+               try {
                const theme = typeof c.theme === 'string' ? JSON.parse(c.theme) : c.theme;
                accent = theme.accent_color || '#000';
              } catch(e) {}

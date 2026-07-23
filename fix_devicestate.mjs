@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react';
+import fs from 'fs';
+
+const content = `import { useState, useCallback } from 'react';
 import { Role } from '../types';
 
 interface DeviceState {
@@ -14,3 +16,6 @@ export function useDeviceState() {
 
   return { ...state, setViewMode };
 }
+`;
+
+fs.writeFileSync('src/hooks/useDeviceState.ts', content);

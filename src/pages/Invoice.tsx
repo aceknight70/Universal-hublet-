@@ -1,8 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useStore } from '../hooks/useStore';
+import { InvoiceDesign } from '../types';
 
 export function InvoiceReceiptGenerator() {
+  const { client } = useStore();
   const [items, setItems] = useState([{ desc: '', price: 0 }]);
   const [customerName, setCustomerName] = useState('');
+  const [design, setDesign] = useState<InvoiceDesign | null>(null);
+
+  useEffect(() => {
+    if (client) {
+      supabase.from('manifest_invoice_design').select('*').eq('client_id', client.id).single().then(({ data }) => {
+        if (data) setDesign(data);
+      });
+    }
+  }, [client]);
 
   const total = items.reduce((sum, item) => sum + Number(item.price), 0);
 

@@ -8,7 +8,7 @@ import { ProductCard } from '../components/ProductCard';
 import { ProductDetail } from '../components/ProductDetail';
 import { Plus } from 'lucide-react';
 
-export function Showroom() {
+export function Showroom({ tagFilter }: { tagFilter?: string }) {
   const { client } = useStore();
   const { profile } = useAuth();
   const viewMode = profile?.role || 'customer';
@@ -64,32 +64,72 @@ export function Showroom() {
       }
 
       // Load products
-      // Load products (global across all skins)
-      let query = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)');
-      if (selectedBrandIds.length > 0) {
-        query = query.in('brand_id', selectedBrandIds);
-      }
-      if (selectedCategory) {
-        query = query.eq('category', selectedCategory);
+      // Load from inventory + catalog
+      let query = supabase
+        .from('manifest_inventory')
+        .select('*, manifest_catalog!inner(*)')
+        .eq('client_id', client.id);
+
+      if (tagFilter) {
+        query = query.eq('tag', tagFilter);
       }
       
-      const { data: prodData } = await query;
-      if (prodData) {
-        const productsWithImages = prodData.map((p: any) => {
-          const formatted = { ...p };
-          if (p.manifest_product_images) {
-             p.manifest_product_images.forEach((img: any) => {
-                if (img.slot === 'main') formatted.main_image = img.image_url;
-                if (img.slot === 'front') formatted.front_image = img.image_url;
-                if (img.slot === 'left') formatted.left_image = img.image_url;
-                if (img.slot === 'right') formatted.right_image = img.image_url;
-                if (img.slot === 'back') formatted.back_image = img.image_url;
-             });
-             delete formatted.manifest_product_images;
-          }
-          return formatted;
+      const { data: invData, error } = await query;
+      if (error) {
+         console.warn("Inventory fetch failed, falling back to legacy products", error);
+         
+         // FALLBACK to old manifest_products table if inventory fails
+         let fallbackQuery = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)');
+         if (selectedBrandIds.length > 0) {
+           fallbackQuery = fallbackQuery.in('brand_id', selectedBrandIds);
+         }
+         if (selectedCategory) {
+           fallbackQuery = fallbackQuery.eq('category', selectedCategory);
+         }
+         const { data: prodData } = await fallbackQuery;
+         if (prodData) {
+           const productsWithImages = prodData.map((p: any) => {
+             const formatted = { ...p };
+             if (p.manifest_product_images) {
+                p.manifest_product_images.forEach((img: any) => {
+                   if (img.slot === 'main') formatted.main_image = img.image_url;
+                   if (img.slot === 'front') formatted.front_image = img.image_url;
+                   if (img.slot === 'left') formatted.left_image = img.image_url;
+                   if (img.slot === 'right') formatted.right_image = img.image_url;
+                   if (img.slot === 'back') formatted.back_image = img.image_url;
+                });
+                delete formatted.manifest_product_images;
+             }
+             return formatted;
+           });
+           setProducts(productsWithImages);
+         }
+         setLoading(false);
+         return; // Skip the rest of inventory logic
+      }
+      if (invData) {
+        let formattedProducts = invData.map((inv: any) => {
+           const catalog = inv.manifest_catalog;
+           return {
+             ...catalog,
+             inventory_id: inv.id,
+             client_id: inv.client_id,
+             price: inv.price,
+             tag: inv.tag,
+             // Map reference photo to main_image so components don't break
+             main_image: catalog.reference_photo_url
+           };
         });
-        setProducts(productsWithImages);
+        
+        // Filter by brand/category locally since we joined
+        if (selectedBrandIds.length > 0) {
+           formattedProducts = formattedProducts.filter((p: any) => selectedBrandIds.includes(p.brand_id || p.brand));
+        }
+        if (selectedCategory) {
+           formattedProducts = formattedProducts.filter((p: any) => p.category === selectedCategory);
+        }
+        
+        setProducts(formattedProducts);
       }
 
       // Load specific extra categories from client

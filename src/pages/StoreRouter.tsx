@@ -4,8 +4,11 @@ import { Routes, Route, useParams, useNavigate, Link, Navigate, useLocation } fr
 import { StoreProvider, useStore } from '../hooks/useStore';
 import { useAuth } from '../hooks/useAuth';
 import { ProtectedRoute } from '../components/ProtectedRoute';
+import { CartProvider } from '../hooks/useCart';
+import { CustomerInvoice } from './CustomerInvoice';
 import { Showroom } from './Showroom';
 import { SheetManager } from './SheetManager';
+import { InventoryManager } from './InventoryManager';
 import { MasterRoom } from './MasterRoom';
 import { Placeholder } from './Placeholders';
 import { SpotlightManager } from './SpotlightManager';
@@ -74,12 +77,7 @@ function StoreContent() {
           if (data && data.length > 0 && !error) {
             setAds(data);
           } else {
-            const local = localStorage.getItem('mock_ads_' + client.id);
-            if (local) {
-              try { setAds(JSON.parse(local)); } catch(e) {}
-            } else {
-              setAds([]);
-            }
+            setAds([]);
           }
         });
     }
@@ -203,14 +201,15 @@ function StoreContent() {
         <Routes>
           {/* Customer Routes */}
           <Route path="/" element={<Showroom />} />
-          <Route path="/arcade" element={<Placeholder title="Arcade" />} />
-          <Route path="/display-floor" element={<Placeholder title="Display Floor" />} />
-          <Route path="/hot-deals" element={<Placeholder title="Hot Deals" />} />
+          <Route path="/arcade" element={<Showroom tagFilter="arcade" />} />
+          <Route path="/display-floor" element={<Showroom tagFilter="display_floor" />} />
+          <Route path="/hot-deals" element={<Showroom tagFilter="hot_deal" />} />
           <Route path="/videos" element={<Placeholder title="Videos" />} />
           <Route path="/gallery" element={<Placeholder title="Gallery" />} />
           <Route path="/ai-desk" element={<Placeholder title="AI Desk" />} />
           <Route path="/channels" element={<Placeholder title="Channels" />} />
-          <Route path="/live-sheet" element={<Placeholder title="Live Sheet" />} />
+          <Route path="/live-sheet" element={<Showroom tagFilter="live_sheet" />} />
+          <Route path="/customer-invoice" element={<CustomerInvoice />} />
           <Route path="/spotlight" element={<SpotlightManager />} />
           <Route path="/pickup-dispatch" element={<Placeholder title="Pickup & Dispatch" />} />
           <Route path="/warranty" element={<Placeholder title="Warranty" />} />
@@ -232,6 +231,7 @@ function StoreContent() {
           {/* Manager Routes */}
           <Route path="/manager" element={<ProtectedRoute roleRequired="manager"><Placeholder title="Manager's Room" roleRequired="Manager" /></ProtectedRoute>} />
           <Route path="/sheet-manager" element={<ProtectedRoute roleRequired="manager"><SheetManager /></ProtectedRoute>} />
+          <Route path="/inventory" element={<ProtectedRoute roleRequired="manager"><InventoryManager /></ProtectedRoute>} />
 
           {/* Master Routes */}
           <Route path="/master/*" element={<ProtectedRoute roleRequired="master"><MasterRoom /></ProtectedRoute>} />

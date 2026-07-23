@@ -30,13 +30,7 @@ export function SpotlightManager() {
       if (data && !error) loadedAds = data;
     } catch (e) {}
     
-    // Fallback to localStorage
-    if (loadedAds.length === 0) {
-      try {
-        const local = localStorage.getItem('mock_ads_' + client.id);
-        if (local) loadedAds = JSON.parse(local);
-      } catch(e) {}
-    }
+    
     
     setAds(loadedAds);
     setLoading(false);
@@ -60,8 +54,7 @@ export function SpotlightManager() {
     const { data, error } = await supabase.from('manifest_brand_ads').insert(newAd).select();
     
     if (error) {
-      console.warn("DB save failed, using local fallback", error);
-      localStorage.setItem('mock_ads_' + client.id, JSON.stringify([newAd]));
+      console.error("DB save failed", error);
       setForm({ brand_name: '', tagline: '', description: '', cta_link: '', banner_image_url: '' });
       loadAds();
       alert("Saved locally (DB error: " + error.message + ")");
@@ -82,7 +75,7 @@ export function SpotlightManager() {
   async function handleDelete(id: string) {
     if (!confirm("Are you sure?")) return;
     await supabase.from('manifest_brand_ads').delete().eq('id', id);
-    localStorage.removeItem('mock_ads_' + client?.id);
+    
     loadAds();
   }
 

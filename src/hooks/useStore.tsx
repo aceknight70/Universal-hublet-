@@ -49,16 +49,7 @@ export function StoreProvider({ slug, children }: { slug: string; children: Reac
           } catch(e) {}
         }
 
-        // Apply local overrides (used when saving fallback store themes in MasterRoom)
-        try {
-          const overridesStr = localStorage.getItem('manifest_theme_overrides');
-          if (overridesStr) {
-            const overrides = JSON.parse(overridesStr);
-            if (overrides[slug]) {
-              (data as any).theme = { ...((data as any).theme || {}), ...overrides[slug] };
-            }
-          }
-        } catch(e) {}
+
 
         setClient(data as any);
       } catch (err: any) {

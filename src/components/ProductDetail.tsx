@@ -400,7 +400,13 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
                 </button>
               ) : (
                 <>
-                  <button className="flex-1 bg-[var(--theme-accent)] text-white py-3 rounded-xl font-bold shadow hover:opacity-90 transition-opacity">
+                  <button 
+                    onClick={() => {
+                      addToCart(product);
+                      setSuccessMsg("Added to Invoice");
+                      setTimeout(() => setSuccessMsg(null), 2000);
+                    }}
+                    className="flex-1 bg-[var(--theme-accent)] text-white py-3 rounded-xl font-bold shadow hover:opacity-90 transition-opacity">
                     Add to Invoice
                   </button>
                   {canEdit && (
