@@ -27,7 +27,7 @@ export function InvoiceDesignManager() {
     if (cData) setClients(cData);
     if (dData) {
       const dMap: Record<string, InvoiceDesign> = {};
-      dData.forEach(d => dMap[d.client_id] = d);
+      (dData as any[]).forEach(d => dMap[d.client_id] = d);
       setDesigns(dMap);
     }
     setLoading(false);
@@ -47,7 +47,7 @@ export function InvoiceDesignManager() {
   );
 }
 
-function DesignEditor({ client, initialDesign, onSaved }: { client: Client, initialDesign?: InvoiceDesign, onSaved: () => void }) {
+function DesignEditor({ client, initialDesign, onSaved }: { client: Client, initialDesign?: InvoiceDesign, onSaved: () => void, key?: React.Key }) {
   const [form, setForm] = useState<Partial<InvoiceDesign>>(initialDesign || { client_id: client.id });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -56,9 +56,9 @@ function DesignEditor({ client, initialDesign, onSaved }: { client: Client, init
     e.preventDefault();
     setSaving(true);
     if (initialDesign?.id) {
-      await supabase.from('manifest_invoice_design').update(form).eq('id', initialDesign.id);
+      await (supabase.from('manifest_invoice_design') as any).update(form as any).eq('id', initialDesign.id);
     } else {
-      await supabase.from('manifest_invoice_design').insert([{ ...form, client_id: client.id }]);
+      await (supabase.from('manifest_invoice_design') as any).insert([{ ...form, client_id: client.id }]);
     }
     setSaving(false);
     setSaved(true);

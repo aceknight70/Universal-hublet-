@@ -28,9 +28,9 @@ export function CatalogManager() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (form.id) {
-      await supabase.from('manifest_catalog').update(form).eq('id', form.id);
+      await (supabase.from('manifest_catalog') as any).update(form as any).eq('id', form.id);
     } else {
-      await supabase.from('manifest_catalog').insert([form]);
+      await (supabase.from('manifest_catalog') as any).insert([form as any]);
     }
     setForm({});
     setIsEditing(false);

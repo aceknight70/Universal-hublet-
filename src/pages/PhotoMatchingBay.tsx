@@ -29,7 +29,7 @@ export function PhotoMatchingBay() {
     if (!client?.id) return;
     const { data } = await supabase.from('manifest_inventory').select('*, manifest_catalog!inner(*)').eq('client_id', client.id);
     if (data) {
-       const mapped = data.map(inv => ({
+       const mapped = (data as any[]).map((inv: any) => ({
           id: inv.manifest_catalog.id, // Use catalog ID so we can match pictures to the catalog!
           name: inv.manifest_catalog.name,
           category: inv.manifest_catalog.category,

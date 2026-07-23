@@ -35,7 +35,7 @@ export function SheetManager() {
       supabase.from('manifest_inventory').select('*, manifest_catalog!inner(*)').eq('client_id', client?.id || ''),
       client?.id ? supabase.from('manifest_client_product_overrides').select('*').eq('client_id', client.id) : Promise.resolve({ data: [] })
     ]);
-    const prods = invData?.map(inv => ({
+    const prods = (invData as any[])?.map((inv: any) => ({
        id: inv.manifest_catalog.id,
        code: inv.manifest_catalog.spec_sheet?.code || 'N/A',
        name: inv.manifest_catalog.name,
@@ -66,7 +66,7 @@ export function SheetManager() {
     // Optimistic update
     setCatalog(catalog.map(p => p.id === productId ? { ...p, override_tags: newTags } : p));
     
-    const { error } = await supabase.from('manifest_client_product_overrides').upsert({
+    const { error } = await (supabase.from('manifest_client_product_overrides') as any).upsert({
       client_id: client.id,
       product_id: productId,
       preset_tags: newTags

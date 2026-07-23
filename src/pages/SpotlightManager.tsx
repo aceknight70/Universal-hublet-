@@ -51,7 +51,7 @@ export function SpotlightManager() {
       banner_image_url: form.banner_image_url
     };
     
-    const { data, error } = await supabase.from('manifest_brand_ads').insert(newAd).select();
+    const { data, error } = await (supabase.from('manifest_brand_ads') as any).insert([newAd]).select();
     
     if (error) {
       console.error("DB save failed", error);

@@ -41,12 +41,12 @@ export function InventoryManager() {
     
     const existing = getInv(catalogId);
     if (existing) {
-      await supabase.from('manifest_inventory').update({
+      await (supabase.from('manifest_inventory') as any).update({
         price: Number(editingItem.price) || null,
         tag: editingItem.tag || null
       }).eq('id', existing.id);
     } else {
-      await supabase.from('manifest_inventory').insert([{
+      await (supabase.from('manifest_inventory') as any).insert([{
         client_id: client.id,
         catalog_id: catalogId,
         price: Number(editingItem.price) || null,

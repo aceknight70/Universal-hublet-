@@ -35,8 +35,8 @@ export function CartProvider({ children, storeSlug }: { children: ReactNode; sto
     let isMounted = true;
     async function loadCart() {
       try {
-        const { data, error } = await supabase
-          .from('manifest_cart')
+        const { data } = await (supabase
+          .from('manifest_cart') as any)
           .select('items')
           .eq('client_id', storeSlug)
           .eq('session_id', session_id)
@@ -62,8 +62,8 @@ export function CartProvider({ children, storeSlug }: { children: ReactNode; sto
     
     async function saveCart() {
       try {
-        await supabase
-          .from('manifest_cart')
+        await (supabase
+          .from('manifest_cart') as any)
           .upsert({
             client_id: storeSlug,
             session_id: session_id,

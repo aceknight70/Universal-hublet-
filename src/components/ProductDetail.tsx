@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { compressImage } from '../lib/imageUtils';
 import { cn } from '../lib/utils';
 import { useStore } from '../hooks/useStore';
+import { useCart } from '../hooks/useCart';
 
 interface ProductDetailProps {
   product: Product;
@@ -25,6 +26,7 @@ const PHOTO_SLOTS = [
 
 export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNew }: ProductDetailProps) {
   const { client } = useStore();
+  const { addToCart } = useCart();
   const [isEditing, setIsEditing] = useState(isNew || false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [editedProduct, setEditedProduct] = useState<Product>(product);

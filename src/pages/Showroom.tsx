@@ -80,16 +80,22 @@ export function Showroom({ tagFilter }: { tagFilter?: string }) {
          
          // FALLBACK to old manifest_products table if inventory fails
          let fallbackQuery = supabase.from('manifest_products').select('*, manifest_product_images(slot, image_url)');
-         if (selectedBrandIds.length > 0) {
-           fallbackQuery = fallbackQuery.in('brand_id', selectedBrandIds);
+         
+         const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+         const validBrandUuids = selectedBrandIds.filter(isUuid);
+
+         if (validBrandUuids.length > 0) {
+           fallbackQuery = fallbackQuery.in('brand_id', validBrandUuids);
          }
          if (selectedCategory) {
            fallbackQuery = fallbackQuery.eq('category', selectedCategory);
          }
          const { data: prodData, error: fallbackError } = await fallbackQuery;
-         if (fallbackError) console.error("Fallback query failed:", fallbackError);
+         if (fallbackError) {
+           console.warn("Fallback query warning:", fallbackError.message || fallbackError);
+         }
          if (prodData) {
-           const productsWithImages = prodData.map((p: any) => {
+           let productsWithImages = prodData.map((p: any) => {
              const formatted = { ...p };
              if (p.manifest_product_images) {
                 p.manifest_product_images.forEach((img: any) => {
@@ -103,6 +109,11 @@ export function Showroom({ tagFilter }: { tagFilter?: string }) {
              }
              return formatted;
            });
+
+           if (selectedBrandIds.length > 0) {
+             productsWithImages = productsWithImages.filter((p: any) => selectedBrandIds.includes(p.brand_id || p.brand));
+           }
+
            setProducts(productsWithImages);
          }
          setLoading(false);

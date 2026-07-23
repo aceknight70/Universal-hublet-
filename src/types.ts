@@ -163,6 +163,17 @@ export interface Database {
         Insert: Record<string, any>;
         Update: Record<string, any>;
       };
+      manifest_cart: {
+        Row: {
+          id: string;
+          client_id: string;
+          session_id: string;
+          items: any;
+          updated_at: string;
+        };
+        Insert: Record<string, any>;
+        Update: Record<string, any>;
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
