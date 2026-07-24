@@ -236,7 +236,7 @@ export function SheetManager() {
 
   return (
     <div className="p-4 md:p-6 w-full max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col">
-      <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded mb-4 text-sm shrink-0">
+      <div className="bg-sky-50 text-sky-800 px-4 py-2 rounded mb-4 text-sm shrink-0">
         <strong>Sheet Manager</strong> • View your current catalog or paste a new list to bulk import/update.
       </div>
       {message && (
@@ -298,7 +298,7 @@ export function SheetManager() {
                       <td className="p-3 text-center border-r bg-gray-50/50">
                         <input 
                           type="checkbox" 
-                          className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500 cursor-pointer"
+                          className="w-4 h-4 rounded text-sky-500 focus:ring-sky-500 cursor-pointer"
                           checked={prod.override_tags?.includes('pricelist')}
                           onChange={() => toggleTag(prod.id, 'pricelist', prod.override_tags || [])}
                         />
@@ -403,7 +403,7 @@ export function SheetManager() {
                       ) : row.isNew ? (
                         <span className="text-green-600 bg-green-100 px-2 py-1 rounded text-xs">New</span>
                       ) : (
-                        <span className="text-blue-600 bg-blue-100 px-2 py-1 rounded text-xs">Update</span>
+                        <span className="text-sky-600 bg-sky-100 px-2 py-1 rounded text-xs">Update</span>
                       )}
                     </td>
                     <td className="p-2">{row.brandName}</td>

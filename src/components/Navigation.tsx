@@ -25,6 +25,7 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
     { name: 'Channels', path: 'channels' },
     { name: 'Pickup & Dispatch', path: 'pickup-dispatch' },
     { name: 'Warranty', path: 'warranty' },
+    { name: 'Complaints', path: 'complaints' },
     { name: 'Contact', path: 'contact' },
     { name: 'Feedback', path: 'feedback' },
     { name: 'Education', path: 'education' },

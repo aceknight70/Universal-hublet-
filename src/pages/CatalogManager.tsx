@@ -74,7 +74,7 @@ export function CatalogManager() {
             <input type="text" className="w-full p-2 border rounded" value={form.reference_photo_url || ''} onChange={e => setForm({...form, reference_photo_url: e.target.value})} />
           </div>
           <div className="col-span-2">
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 mr-2">Save</button>
+            <button type="submit" className="bg-sky-600 text-white px-4 py-2 rounded font-bold hover:bg-sky-700 mr-2">Save</button>
             <button type="button" onClick={() => setIsEditing(false)} className="bg-gray-200 px-4 py-2 rounded font-bold hover:bg-gray-300">Cancel</button>
           </div>
         </form>

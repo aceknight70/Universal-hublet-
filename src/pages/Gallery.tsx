@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase, ACTIVE_CLIENT_ID } from '../lib/supabase';
 import { useStore } from '../hooks/useStore';
 import { compressImage } from '../lib/imageUtils';
+import { applyWatermark } from '../lib/watermarkUtils';
+import { useAuth } from '../hooks/useAuth';
+import { Product } from '../types';
 import {
   Plus,
   Upload,
@@ -14,6 +17,7 @@ import {
   Tag,
   MessageCircle,
   Sparkles,
+  Search,
   AlertCircle
 } from 'lucide-react';
 
@@ -39,6 +43,9 @@ export interface ParsedGalleryItem {
 
 export function Gallery() {
   const { client } = useStore();
+  const { profile } = useAuth();
+  const isStaff = profile?.role === 'staff' || profile?.role === 'manager' || profile?.role === 'master';
+  
   const [items, setItems] = useState<ParsedGalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +64,12 @@ export function Gallery() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Link to Display Floor State
+  const [isLinkingToFloor, setIsLinkingToFloor] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
 
   const folder = ACTIVE_CLIENT_ID;
 
@@ -77,7 +90,7 @@ export function Gallery() {
       id: rec.id,
       photo_url: rec.photo_url,
       thumbnail_url: rec.thumbnail_url || parsed.thumbnail_url || rec.photo_url,
-      product_name: parsed.product_name || 'O Frank Featured Item',
+      product_name: parsed.product_name || 'Adane House Featured Item',
       spec: parsed.spec || '',
       price: typeof parsed.price === 'number' ? parsed.price : (parsed.price ? parseFloat(parsed.price) : null),
       created_at: rec.created_at,
@@ -133,10 +146,20 @@ export function Gallery() {
 
   // Upload helper to upload both 600px grid thumbnail & 1200px full detail photo
   async function uploadDualImages(file: File): Promise<{ fullUrl: string; thumbUrl: string }> {
+    let processedFile = file;
+    let themeObj = client?.theme;
+    if (typeof themeObj === 'string') {
+       try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+    }
+    
+    if (themeObj?.watermark?.url) {
+       processedFile = await applyWatermark(file, themeObj.watermark);
+    }
+
     // Generate thumbnail (600px max edge)
-    const thumbFile = await compressImage(file, 600, 0.80);
+    const thumbFile = await compressImage(processedFile, 600, 0.80);
     // Generate full size (1200px max edge), high quality to preserve sharpness
-    const fullFile = await compressImage(file, 1200, 0.90);
+    const fullFile = await compressImage(processedFile, 1200, 0.90);
 
     const timestamp = Date.now();
     const rand = Math.random().toString(36).substring(7);
@@ -189,12 +212,18 @@ export function Gallery() {
       // Upload dual sizes
       const { fullUrl, thumbUrl } = await uploadDualImages(formFile);
 
+      let themeObj = client?.theme;
+      if (typeof themeObj === 'string') {
+         try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+      }
+      
       // Create JSON payload (we'll keep thumbnail_url in here as well for fallback)
       const captionPayload = JSON.stringify({
-        product_name: formName.trim() || 'O Frank Featured Item',
+        product_name: formName.trim() || 'Adane House Featured Item',
         spec: formSpec.trim(),
         price: formPrice ? parseFloat(formPrice) : null,
-        thumbnail_url: thumbUrl
+        thumbnail_url: thumbUrl,
+        watermarked: !!themeObj?.watermark?.url
       });
 
       // Check if the thumbnail_url column exists in the database
@@ -259,11 +288,17 @@ export function Gallery() {
         thumbUrl = uploaded.thumbUrl;
       }
 
+      let themeObj = client?.theme;
+      if (typeof themeObj === 'string') {
+         try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+      }
+      
       const captionPayload = JSON.stringify({
-        product_name: formName.trim() || 'O Frank Featured Item',
+        product_name: formName.trim() || 'Adane House Featured Item',
         spec: formSpec.trim(),
         price: formPrice ? parseFloat(formPrice) : null,
-        thumbnail_url: thumbUrl
+        thumbnail_url: thumbUrl,
+        watermarked: formFile ? !!themeObj?.watermark?.url : !!selectedItem.raw_record.caption?.includes('"watermarked":true')
       });
 
       // Check if the thumbnail_url column exists in the database
@@ -297,7 +332,7 @@ export function Gallery() {
         ...selectedItem,
         photo_url: fullUrl,
         thumbnail_url: thumbUrl,
-        product_name: formName.trim() || 'O Frank Featured Item',
+        product_name: formName.trim() || 'Adane House Featured Item',
         spec: formSpec.trim(),
         price: formPrice ? parseFloat(formPrice) : null
       };
@@ -331,7 +366,7 @@ export function Gallery() {
 
       if (delErr) throw delErr;
 
-      setSuccess('Photo deleted from O Frank Gallery.');
+      setSuccess('Photo deleted from Adane House Gallery.');
       setTimeout(() => setSuccess(null), 3000);
 
       setSelectedItem(null);
@@ -355,6 +390,123 @@ export function Gallery() {
     }).format(val);
   };
 
+  // Load products for linking
+  async function loadProducts() {
+    if (!client?.id) return;
+    const { data } = await supabase.from('manifest_inventory').select('*, manifest_catalog!inner(*)').eq('client_id', client.id);
+    if (data) {
+       const mapped = (data as any[]).map((inv: any) => ({
+          id: inv.manifest_catalog.id, 
+          name: inv.manifest_catalog.name,
+          category: inv.manifest_catalog.category,
+          price: inv.price,
+          brand_id: inv.manifest_catalog.brand,
+          main_image: inv.manifest_catalog.reference_photo_url,
+          code: inv.manifest_catalog.code
+       }));
+       setProducts(mapped);
+    }
+  }
+
+  useEffect(() => {
+    if (isLinkingToFloor && products.length === 0) {
+      loadProducts();
+    }
+  }, [isLinkingToFloor, client]);
+
+  const [isWatermarkingRetro, setIsWatermarkingRetro] = useState(false);
+  const [watermarkProgress, setWatermarkProgress] = useState<{current: number, total: number} | null>(null);
+
+  async function watermarkExisting() {
+    let themeObj = client?.theme;
+    if (typeof themeObj === 'string') {
+       try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+    }
+    if (!themeObj?.watermark?.url) {
+      alert("No watermark settings configured. Please configure in the Master Room first.");
+      return;
+    }
+
+    const unwatermarked = items.filter(item => !item.raw_record.caption?.includes('"watermarked":true'));
+    if (unwatermarked.length === 0) {
+      alert("All photos are already watermarked!");
+      return;
+    }
+    
+    if (!confirm(`Are you sure you want to process ${unwatermarked.length} photos to add watermarks?`)) return;
+
+    setIsWatermarkingRetro(true);
+    let processed = 0;
+    for (const item of unwatermarked) {
+       setWatermarkProgress({ current: processed + 1, total: unwatermarked.length });
+       try {
+         // Download full image
+         const response = await fetch(item.photo_url);
+         const blob = await response.blob();
+         const file = new File([blob], "image.jpg", { type: blob.type });
+
+         // Upload will automatically watermark because of our changes to uploadDualImages
+         const { fullUrl, thumbUrl } = await uploadDualImages(file);
+
+         // Update record
+         let parsed = JSON.parse(item.raw_record.caption || '{}');
+         parsed.thumbnail_url = thumbUrl;
+         parsed.watermarked = true;
+
+         await (supabase as any).from('manifest_gallery').update({ 
+           photo_url: fullUrl, 
+           caption: JSON.stringify(parsed)
+         }).eq('id', item.id);
+         
+       } catch (err) {
+         console.error("Failed to watermark item", item.id, err);
+       }
+       processed++;
+    }
+    setSuccess(`Processed ${processed} photos successfully.`);
+    setIsWatermarkingRetro(false);
+    setWatermarkProgress(null);
+    fetchGallery();
+  }
+
+  async function handleLinkToFloor(product: Product) {
+    if (!selectedItem) return;
+    setIsLinking(true);
+    setError(null);
+    try {
+      // 1. Set tag to 'display_floor' in manifest_inventory
+      const { error: invErr } = await (supabase as any)
+        .from('manifest_inventory')
+        .update({ tag: 'display_floor' })
+        .match({ client_id: ACTIVE_CLIENT_ID, catalog_id: product.id });
+      
+      if (invErr) throw invErr;
+
+      // 2. Set this photo as reference_photo_url in manifest_catalog if null
+      const { data: catData } = await (supabase as any)
+        .from('manifest_catalog')
+        .select('reference_photo_url')
+        .eq('id', product.id)
+        .single();
+      
+      if (catData && !catData.reference_photo_url) {
+         await (supabase as any)
+           .from('manifest_catalog')
+           .update({ reference_photo_url: selectedItem.photo_url })
+           .eq('id', product.id);
+      }
+
+      setSuccess(`Photo linked to ${product.name} on Display Floor!`);
+      setTimeout(() => setSuccess(null), 3000);
+      setIsLinkingToFloor(false);
+    } catch (err: any) {
+      console.error('Failed to link to floor:', err);
+      setError('Failed to link to Display Floor: ' + (err.message || 'Database error'));
+    } finally {
+      setIsLinking(false);
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full min-h-screen">
       {/* Header Banner */}
@@ -362,24 +514,48 @@ export function Gallery() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              O Frank Official Gallery
+              Adane House Official Gallery
             </h1>
-            <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+            <span className="px-2.5 py-0.5 text-xs font-semibold bg-sky-50 text-sky-700 rounded-full border border-sky-100">
               Verified Collection
             </span>
           </div>
           <p className="text-sm text-gray-500 max-w-xl">
-            Browse high-resolution product showcases for {client?.name || 'O Frank Electronics'}. Tap any photo to inspect full details, specs, and pricing.
+            Browse high-resolution product showcases for {client?.name || 'Adane House Electronics'}. Tap any photo to inspect full details, specs, and pricing.
           </p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--theme-accent)] hover:opacity-90 text-white rounded-xl shadow-md transition-all text-sm font-semibold cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Add Photo</span>
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          {isStaff && (
+            <button
+              onClick={watermarkExisting}
+              disabled={isWatermarkingRetro}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl transition-all text-sm font-semibold cursor-pointer shrink-0 disabled:opacity-50"
+              title="Retroactively apply watermarks to old photos"
+            >
+              {isWatermarkingRetro ? (
+                 <>
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                   <span>Processing ({watermarkProgress?.current}/{watermarkProgress?.total})</span>
+                 </>
+              ) : (
+                 <>
+                   <ImageIcon className="w-4 h-4" />
+                   <span>Watermark Existing</span>
+                 </>
+              )}
+            </button>
+          )}
+          {isStaff && (
+            <button
+              onClick={openAddModal}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--theme-accent)] hover:opacity-90 text-white rounded-xl shadow-md transition-all text-sm font-semibold cursor-pointer shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add Photo</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Global Alerts */}
@@ -406,16 +582,16 @@ export function Gallery() {
       {loading ? (
         <div className="py-20 text-center text-gray-500 flex flex-col items-center justify-center gap-3">
           <Loader2 className="w-9 h-9 animate-spin text-[var(--theme-accent)]" />
-          <span className="text-sm font-medium">Loading O Frank Gallery...</span>
+          <span className="text-sm font-medium">Loading Adane House Gallery...</span>
         </div>
       ) : items.length === 0 ? (
         <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50 flex flex-col items-center justify-center p-8">
-          <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center text-[var(--theme-accent)] mb-4 shadow-inner">
+          <div className="w-16 h-16 rounded-full bg-sky-50 flex items-center justify-center text-[var(--theme-accent)] mb-4 shadow-inner">
             <ImageIcon className="w-8 h-8" />
           </div>
           <h3 className="font-bold text-gray-800 text-lg">No Gallery Photos Yet</h3>
           <p className="text-sm text-gray-500 max-w-md mt-1 mb-6">
-            Upload your first photo to populate the official O Frank gallery. Clean photo grid loaded directly from your dedicated storage repository.
+            Upload your first photo to populate the official Adane House gallery. Clean photo grid loaded directly from your dedicated storage repository.
           </p>
           <button
             onClick={openAddModal}
@@ -463,27 +639,39 @@ export function Gallery() {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[var(--theme-accent)]" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  O Frank Product Showcase
+                  Adane House Product Showcase
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={startEditing}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors cursor-pointer"
-                  title="Edit details or replace photo"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span>Edit</span>
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-lg transition-colors cursor-pointer"
-                  title="Delete photo"
-                >
-                  {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  <span>Delete</span>
-                </button>
+                {isStaff && (
+                  <>
+                    <button
+                      onClick={() => setIsLinkingToFloor(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--theme-accent)] hover:opacity-90 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                      title="Also feature on Display Floor"
+                    >
+                      <Tag className="w-3.5 h-3.5" />
+                      <span>Also feature on Display Floor</span>
+                    </button>
+                    <button
+                      onClick={startEditing}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                      title="Edit details or replace photo"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                      title="Delete photo"
+                    >
+                      {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      <span>Delete</span>
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => setSelectedItem(null)}
                   className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-200/50 transition-colors cursor-pointer"
@@ -511,7 +699,7 @@ export function Gallery() {
                     {selectedItem.product_name}
                   </h2>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Added to O Frank Gallery on {new Date(selectedItem.created_at).toLocaleDateString()}
+                    Added to Adane House Gallery on {new Date(selectedItem.created_at).toLocaleDateString()}
                   </p>
                 </div>
 
@@ -542,7 +730,7 @@ export function Gallery() {
                   className="w-full inline-flex items-center justify-center gap-2 py-3 bg-[var(--theme-accent)] text-white rounded-xl font-semibold text-sm shadow-md hover:opacity-90 transition-all"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>Inquire with O Frank Store</span>
+                  <span>Inquire with Adane House Store</span>
                 </a>
               </div>
             </div>
@@ -612,7 +800,7 @@ export function Gallery() {
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. O Frank QLED 4K TV 65&quot;"
+                  placeholder="e.g. Adane House QLED 4K TV 65&quot;"
                   className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[var(--theme-accent)] focus:border-transparent outline-none"
                 />
               </div>
@@ -722,7 +910,7 @@ export function Gallery() {
                     </button>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 hover:border-[var(--theme-accent)] bg-gray-50/50 hover:bg-blue-50/20 rounded-xl cursor-pointer transition-all">
+                  <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 hover:border-[var(--theme-accent)] bg-gray-50/50 hover:bg-sky-50/20 rounded-xl cursor-pointer transition-all">
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <span className="text-sm font-semibold text-gray-700">Click or drop photo here</span>
                     <span className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP up to 10MB</span>
@@ -737,6 +925,8 @@ export function Gallery() {
                 )}
                 <p className="text-[11px] text-gray-400 mt-1">
                   Automatically generates 600px grid thumbnail &amp; 1200px full detail image on upload.
+                  <br />
+                  <span className="font-semibold text-amber-600">Guidance:</span> Upload individual product photos only — not general store or entrance shots.
                 </p>
               </div>
 
@@ -750,7 +940,7 @@ export function Gallery() {
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. O Frank Premium Soundbar 5.1"
+                  placeholder="e.g. Adane House Premium Soundbar 5.1"
                   className="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[var(--theme-accent)] focus:border-transparent outline-none"
                 />
               </div>
@@ -812,6 +1002,64 @@ export function Gallery() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* LINK TO DISPLAY FLOOR MODAL */}
+      {isLinkingToFloor && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setIsLinkingToFloor(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl border border-gray-100 p-6 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 shrink-0">
+              <h3 className="text-lg font-bold text-gray-900">Feature on Display Floor</h3>
+              <button
+                onClick={() => setIsLinkingToFloor(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4 shrink-0 relative">
+               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                 <Search className="w-4 h-4 text-gray-400" />
+               </div>
+               <input
+                 type="text"
+                 placeholder="Search products to link..."
+                 value={searchQuery}
+                 onChange={e => setSearchQuery(e.target.value)}
+                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-[var(--theme-accent)] focus:border-[var(--theme-accent)] sm:text-sm"
+               />
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+              {products
+                .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || (p.code && p.code.toLowerCase().includes(searchQuery.toLowerCase())))
+                .map(product => (
+                <div key={product.id} className="flex items-center justify-between p-3 border rounded-xl hover:border-[var(--theme-accent)] hover:shadow-sm transition-all bg-gray-50/50">
+                  <div className="min-w-0 pr-4">
+                     <p className="text-sm font-bold text-gray-900 truncate">{product.name}</p>
+                     <p className="text-xs text-gray-500 font-mono mt-0.5">{product.code || 'No Code'}</p>
+                  </div>
+                  <button
+                    disabled={isLinking}
+                    onClick={() => handleLinkToFloor(product)}
+                    className="inline-flex items-center justify-center px-4 py-2 bg-[var(--theme-accent)] hover:opacity-90 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shrink-0"
+                  >
+                    {isLinking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Select'}
+                  </button>
+                </div>
+              ))}
+              {products.length === 0 && (
+                <div className="text-center text-gray-500 py-8 text-sm">Loading products...</div>
+              )}
+            </div>
           </div>
         </div>
       )}

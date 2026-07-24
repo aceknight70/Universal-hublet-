@@ -99,7 +99,7 @@ export function SpotlightManager() {
                 value={form.brand_name} 
                 onChange={e => setForm({...form, brand_name: e.target.value})}
                 className="w-full border rounded p-2"
-                placeholder="e.g. O Frank"
+                placeholder="e.g. Adane House"
               />
             </div>
             <div>
@@ -134,7 +134,7 @@ export function SpotlightManager() {
               />
             </div>
           </div>
-          <button disabled={saving} type="submit" className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">
+          <button disabled={saving} type="submit" className="bg-sky-600 text-white px-4 py-2 rounded shadow hover:bg-sky-700">
             {saving ? 'Saving...' : 'Add / Update Spotlight'}
           </button>
         </form>
@@ -154,7 +154,7 @@ export function SpotlightManager() {
                 <div>
                   <h4 className="font-bold text-lg">{ad.brand_name}</h4>
                   <p className="text-sm text-gray-600">{ad.tagline}</p>
-                  <a href={ad.cta_link} className="text-xs text-blue-600 hover:underline">{ad.cta_link}</a>
+                  <a href={ad.cta_link} className="text-xs text-sky-600 hover:underline">{ad.cta_link}</a>
                 </div>
               </div>
               <button onClick={() => handleDelete(ad.id)} className="text-red-600 text-sm hover:underline">Remove</button>

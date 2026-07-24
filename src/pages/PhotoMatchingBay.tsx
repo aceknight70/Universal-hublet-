@@ -1,3 +1,4 @@
+import { ACTIVE_CLIENT_ID } from '../lib/supabase';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../hooks/useStore';
@@ -43,7 +44,7 @@ export function PhotoMatchingBay() {
 
   async function loadTray() {
     try {
-      const folder = client?.id || 'ofrank';
+      const folder = ACTIVE_CLIENT_ID;
       const { data, error } = await supabase.storage.from('manifest_gallery').list(folder);
       if (error) throw error;
       // Filter out matched photos and placeholders
@@ -67,7 +68,7 @@ export function PhotoMatchingBay() {
     try {
       const compressedFile = await compressImage(file, 1600);
       const fileExt = compressedFile.name.split('.').pop() || 'jpg';
-      const folder = client?.id || 'ofrank';
+      const folder = ACTIVE_CLIENT_ID;
       const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
@@ -95,7 +96,7 @@ export function PhotoMatchingBay() {
     setIsMatching(true);
     setErrorMsg(null);
     try {
-      const folder = client?.id || 'ofrank';
+      const folder = ACTIVE_CLIENT_ID;
       const oldPath = `${folder}/${selectedPhoto.name}`;
       const newPath = `${folder}/matched_${Date.now()}_${selectedPhoto.name}`; // Add timestamp to avoid collisions
       
@@ -177,7 +178,7 @@ export function PhotoMatchingBay() {
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {photos.map(photo => {
-                  const folder = client?.id || 'ofrank';
+                  const folder = ACTIVE_CLIENT_ID;
                   const url = supabase.storage.from('manifest_gallery').getPublicUrl(`${folder}/${photo.name}`).data.publicUrl;
                   const isSelected = selectedPhoto?.name === photo.name;
                   return (
@@ -204,19 +205,19 @@ export function PhotoMatchingBay() {
       {/* Right Content: Product Matching */}
       <div className="w-full md:w-2/3 flex flex-col bg-white rounded shadow-sm border overflow-hidden h-[60vh] md:h-full min-h-[500px] md:min-h-0">
         {selectedPhoto ? (
-          <div className="p-4 border-b bg-blue-50 flex items-center justify-between">
+          <div className="p-4 border-b bg-sky-50 flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-blue-900">Select a Product</h3>
-              <p className="text-xs text-blue-700">Choose a product below to attach the selected photo.</p>
+              <h3 className="font-bold text-sky-900">Select a Product</h3>
+              <p className="text-xs text-sky-700">Choose a product below to attach the selected photo.</p>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded border-2 border-white shadow-sm overflow-hidden">
                 <img 
-                  src={supabase.storage.from('manifest_gallery').getPublicUrl(`${client?.id || 'ofrank'}/${selectedPhoto.name}`).data.publicUrl} 
+                  src={supabase.storage.from('manifest_gallery').getPublicUrl(`${ACTIVE_CLIENT_ID}/${selectedPhoto.name}`).data.publicUrl} 
                   className="w-full h-full object-cover"
                 />
               </div>
-              <button onClick={() => setSelectedPhoto(null)} className="p-2 hover:bg-blue-100 rounded-full text-blue-800">
+              <button onClick={() => setSelectedPhoto(null)} className="p-2 hover:bg-sky-100 rounded-full text-sky-800">
                 <X className="w-5 h-5" />
               </button>
             </div>

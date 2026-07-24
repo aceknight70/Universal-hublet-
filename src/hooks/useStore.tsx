@@ -10,22 +10,22 @@ interface StoreContextType {
 
 const StoreContext = createContext<StoreContextType>({ client: null, loading: true, error: null });
 
-const OFRANK_DEFAULT: Client = {
+const ADANEHOUSE_DEFAULT: Client = {
   id: ACTIVE_CLIENT_ID,
-  name: 'O Frank Electronics',
+  name: 'Adane House',
   slug: ACTIVE_CLIENT_SLUG,
   categories: [],
   theme: {
-    accent_color: '#2B5FD9',
+    accent_color: '#0ea5e9',
     background_color: '#f9fafb',
     header_background_color: '#ffffff',
-    header_text_color: '#2B5FD9'
+    header_text_color: '#0ea5e9'
   },
   created_at: new Date().toISOString()
 };
 
-export function StoreProvider({ children }: { slug?: string; children: ReactNode }) {
-  const [client, setClient] = useState<Client | null>(OFRANK_DEFAULT);
+export function StoreProvider({ children }: { children: ReactNode }) {
+  const [client, setClient] = useState<Client | null>(ADANEHOUSE_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -40,10 +40,10 @@ export function StoreProvider({ children }: { slug?: string; children: ReactNode
           .or(`slug.eq.${ACTIVE_CLIENT_SLUG},id.eq.${ACTIVE_CLIENT_ID}`)
           .maybeSingle();
 
-        if (dbError) console.warn("DB query for client failed, using default O Frank client:", dbError);
+        if (dbError) console.warn("DB query for client failed, using default Adane House client:", dbError);
         
         if (!data) {
-          data = OFRANK_DEFAULT as any;
+          data = ADANEHOUSE_DEFAULT as any;
         } else {
           // Force id & slug to match our deployment's hardcoded identifier
           (data as any).id = ACTIVE_CLIENT_ID;
@@ -59,8 +59,8 @@ export function StoreProvider({ children }: { slug?: string; children: ReactNode
 
         setClient(data as any);
       } catch (err: any) {
-        console.warn('Fallback to O Frank default due to error:', err);
-        setClient(OFRANK_DEFAULT);
+        console.warn('Fallback to Adane House default due to error:', err);
+        setClient(ADANEHOUSE_DEFAULT);
       } finally {
         setLoading(false);
       }
@@ -70,7 +70,7 @@ export function StoreProvider({ children }: { slug?: string; children: ReactNode
   }, []);
 
   return (
-    <StoreContext.Provider value={{ client: client || OFRANK_DEFAULT, loading, error }}>
+    <StoreContext.Provider value={{ client: client || ADANEHOUSE_DEFAULT, loading, error }}>
       {children}
     </StoreContext.Provider>
   );

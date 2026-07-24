@@ -166,12 +166,12 @@ export function Showroom({ tagFilter }: { tagFilter?: string }) {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      <div className="bg-blue-50 text-blue-800 px-4 py-2 text-sm text-center font-medium flex justify-between items-center">
+      <div className="bg-sky-50 text-sky-800 px-4 py-2 text-sm text-center font-medium flex justify-between items-center">
         <span>Showroom • Browse brands and categories.</span>
         {['staff', 'manager', 'master'].includes(viewMode) && (
           <button 
             onClick={() => setIsCreating(true)}
-            className="flex items-center text-xs bg-white text-blue-800 px-2 py-1 rounded shadow-sm hover:bg-blue-100"
+            className="flex items-center text-xs bg-white text-sky-800 px-2 py-1 rounded shadow-sm hover:bg-sky-100"
           >
             <Plus className="w-3 h-3 mr-1" /> New Product
           </button>

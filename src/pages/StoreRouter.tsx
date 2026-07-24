@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Routes, Route, useParams, useNavigate, Link, Navigate, useLocation } from 'react-router-dom';
+import { supabase, ACTIVE_CLIENT_SLUG } from '../lib/supabase';
+import { Routes, Route, useNavigate, Link, Navigate, useLocation } from 'react-router-dom';
 import { StoreProvider, useStore } from '../hooks/useStore';
 import { useAuth } from '../hooks/useAuth';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -11,6 +11,7 @@ import { SheetManager } from './SheetManager';
 import { InventoryManager } from './InventoryManager';
 import { MasterRoom } from './MasterRoom';
 import { Placeholder } from './Placeholders';
+import { Complaints } from './Complaints';
 import { SpotlightManager } from './SpotlightManager';
 import { InvoiceReceiptGenerator } from './Invoice';
 import { PhotoMatchingBay } from './PhotoMatchingBay';
@@ -21,7 +22,7 @@ import { StoreNavigation } from '../components/Navigation';
 function FloatingBackButton({ viewMode }: { viewMode: string }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { storeSlug } = useParams<{ storeSlug: string }>();
+  const storeSlug = ACTIVE_CLIENT_SLUG;
   
   const isIframe = window.self !== window.top;
   const isMaster = viewMode === 'master';
@@ -55,11 +56,8 @@ function FloatingBackButton({ viewMode }: { viewMode: string }) {
 }
 
 function StoreLayout() {
-  const { storeSlug } = useParams<{ storeSlug: string }>();
-  if (!storeSlug) return <div>Store not found</div>;
-
   return (
-    <StoreProvider slug={storeSlug}>
+    <StoreProvider>
       <StoreContent />
     </StoreProvider>
   );
@@ -118,7 +116,7 @@ function StoreContent() {
             <div className="flex items-center space-x-2 md:space-x-4" style={{ borderColor: headerTextColor }}>
             <div className="flex items-center space-x-2">
               <span className="text-xs uppercase tracking-wider font-semibold opacity-90 px-2 py-0.5 rounded border border-white/20" style={{ color: headerTextColor }}>
-                Official O Frank Hublet
+                Official Adane House Hublet
               </span>
             </div>
             <div className="flex items-center space-x-2 md:border-l md:pl-4 border-opacity-20" style={{ borderColor: headerTextColor }}>
@@ -203,6 +201,7 @@ function StoreContent() {
           <Route path="/spotlight" element={<SpotlightManager />} />
           <Route path="/pickup-dispatch" element={<Placeholder title="Pickup & Dispatch" />} />
           <Route path="/warranty" element={<Placeholder title="Warranty" />} />
+          <Route path="/complaints" element={<Complaints />} />
           <Route path="/contact" element={<Placeholder title="Contact" />} />
           <Route path="/feedback" element={<Placeholder title="Feedback" />} />
           <Route path="/education" element={<Placeholder title="Education" />} />
@@ -210,7 +209,7 @@ function StoreContent() {
 
           {/* Login */}
           <Route path="/login" element={
-            <div className="py-12"><ProtectedRoute><div className="text-center mt-10">Logged in successfully. <Link to={`/${client.slug}`} className="text-blue-600 underline">Go to Showroom</Link></div></ProtectedRoute></div>
+            <div className="py-12"><ProtectedRoute><div className="text-center mt-10">Logged in successfully. <Link to={`/${client.slug}`} className="text-sky-600 underline">Go to Showroom</Link></div></ProtectedRoute></div>
           } />
 
           {/* Staff Routes */}
@@ -235,8 +234,8 @@ function StoreContent() {
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/:storeSlug/*" element={<StoreLayout />} />
-      <Route path="/" element={<Navigate to="/ofrank" replace />} />
+      <Route path={`/${ACTIVE_CLIENT_SLUG}/*`} element={<StoreLayout />} />
+      <Route path="*" element={<Navigate to={`/${ACTIVE_CLIENT_SLUG}`} replace />} />
     </Routes>
   );
 }

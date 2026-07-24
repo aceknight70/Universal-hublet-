@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Product } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, ACTIVE_CLIENT_ID } from '../lib/supabase';
 
 interface CartItem {
   product: Product;
@@ -26,9 +26,11 @@ const CartContext = createContext<CartContextType>({
 // Generate a random session ID that stays in memory for the duration of the visit
 const session_id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-export function CartProvider({ children, storeSlug }: { children: ReactNode; storeSlug: string }) {
+export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  
+  const storeSlug = ACTIVE_CLIENT_ID;
 
   // Load cart from Supabase on mount
   useEffect(() => {

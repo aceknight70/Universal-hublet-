@@ -1,3 +1,4 @@
+import { ACTIVE_CLIENT_ID } from '../lib/supabase';
 import React, { useState, useEffect } from 'react';
 import { Product, Brand, SHARED_CATEGORIES } from '../types';
 import { X, Check, ImagePlus, Upload } from 'lucide-react';
@@ -163,7 +164,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
      // Since we can't reliably predict storage RLS here, we'll do the actual upload if possible
      try {
        const fileExt = file.name.split('.').pop();
-       const folder = client?.id || 'ofrank';
+       const folder = ACTIVE_CLIENT_ID;
       const fileName = `${folder}/${product.id}_${slotKey}_${Math.random()}.${fileExt}`;
        const filePath = `${fileName}`;
 
@@ -358,11 +359,11 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
                 </div>
 
                 {product.assurance_yn && (
-                  <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-start space-x-3">
-                    <div className="text-blue-500 mt-0.5">⭐</div>
+                  <div className="bg-sky-50 border border-sky-100 p-3 rounded-lg flex items-start space-x-3">
+                    <div className="text-sky-500 mt-0.5">⭐</div>
                     <div>
-                      <div className="text-sm font-bold text-blue-900">Store Assurance</div>
-                      <div className="text-xs text-blue-800">{product.assurance_text || 'Backed by our premium guarantee.'}</div>
+                      <div className="text-sm font-bold text-sky-900">Store Assurance</div>
+                      <div className="text-xs text-sky-800">{product.assurance_text || 'Backed by our premium guarantee.'}</div>
                     </div>
                   </div>
                 )}
