@@ -2,13 +2,87 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Client } from '../types';
 import { AccountSettings } from '../components/AccountSettings';
+import { useStore } from '../hooks/useStore';
 import { Settings, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+
+function DomainSkinControl({ clients }: { clients: Client[] }) {
+  const [currentDomain] = useState(window.location.hostname);
+  const [assignedClientId, setAssignedClientId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const { refreshClient } = useStore();
+
+  useEffect(() => {
+    async function loadDomainConfig() {
+      const { data, error } = await (supabase as any)
+        .from('manifest_domain_config')
+        .select('client_id')
+        .eq('domain', currentDomain)
+        .maybeSingle();
+      if (data && !error) {
+        setAssignedClientId(data.client_id);
+      }
+    }
+    loadDomainConfig();
+  }, [currentDomain]);
+
+  async function handleSelectChange(newClientId: string) {
+    if (!newClientId) return;
+    setAssignedClientId(newClientId);
+    setIsSaving(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('manifest_domain_config')
+        .upsert({ domain: currentDomain, client_id: newClientId });
+      
+      if (error) throw error;
+      if (refreshClient) {
+        await refreshClient();
+      }
+    } catch (err: any) {
+      alert("Failed to update domain configuration: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="bg-white p-6 rounded shadow-sm border relative">
+      <h3 className="text-lg font-bold mb-4">Domain Skin Control</h3>
+      <p className="text-sm text-gray-500 mb-6">
+        Instantly switch the identity of this domain (<strong>{currentDomain}</strong>). Changes take effect immediately.
+      </p>
+      
+      <div className="relative max-w-sm">
+        <select 
+          value={assignedClientId} 
+          onChange={e => handleSelectChange(e.target.value)}
+          disabled={isSaving}
+          className="appearance-none block w-full pl-3 pr-10 py-3 text-base border-gray-300 bg-gray-50 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md border font-medium cursor-pointer"
+        >
+          <option value="" disabled>-- Select a business --</option>
+          {clients.map(c => (
+             <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function WatermarkEditor({ clients, setClients }: { clients: Client[], setClients: any }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [settings, setSettings] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState('');
 
   useEffect(() => {
     if (selectedClientId) {
@@ -24,24 +98,45 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
           opacity: theme.watermark?.opacity ?? 50,
           size: theme.watermark?.size ?? 15,
        });
+       setUploadSuccess('');
     } else {
        setSettings(null);
+       setUploadSuccess('');
     }
   }, [selectedClientId, clients]);
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
      if (!e.target.files || !e.target.files[0] || !selectedClientId) return;
      setIsUploading(true);
+     setUploadSuccess('');
      try {
        const file = e.target.files[0];
        const filename = `watermarks/${selectedClientId}-${Date.now()}`;
        
-       // Note: uploading to manifest_gallery for convenience, as it's a public bucket
-       const { error } = await supabase.storage.from('manifest_gallery').upload(filename, file);
+       const { error } = await (supabase as any).storage.from('manifest_gallery').upload(filename, file);
        if (error) throw error;
        
        const { data: urlData } = supabase.storage.from('manifest_gallery').getPublicUrl(filename);
-       setSettings({ ...settings, url: urlData.publicUrl });
+       
+       const newSettings = { ...settings, url: urlData.publicUrl };
+       setSettings(newSettings);
+       
+       // Auto-save the client theme so it's immediate
+       const client = clients.find(c => c.id === selectedClientId);
+       if (client && !client.id.startsWith('fallback')) {
+          let themeObj = client.theme;
+          if (typeof themeObj === 'string') {
+             try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+          }
+          themeObj = themeObj || {};
+          themeObj.watermark = newSettings;
+          
+          await (supabase as any).from('manifest_clients').update({ theme: themeObj }).eq('id', selectedClientId);
+          setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeObj } : c));
+       }
+       
+       setUploadSuccess('Watermark uploaded and saved ✓');
+       setTimeout(() => setUploadSuccess(''), 5000);
      } catch(err: any) {
         alert("Upload failed: " + err.message);
      } finally {
@@ -52,6 +147,7 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
   async function handleSave() {
      if (!selectedClientId || !settings) return;
      setIsSaving(true);
+     setUploadSuccess('');
      try {
        const client = clients.find(c => c.id === selectedClientId);
        if (!client) throw new Error("Client not found");
@@ -68,7 +164,8 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
           if (error) throw error;
        }
        setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeObj } : c));
-       alert('Watermark settings updated successfully.');
+       setUploadSuccess('Watermark settings updated ✓');
+       setTimeout(() => setUploadSuccess(''), 5000);
      } catch (err: any) {
         alert('Failed to save watermark settings: ' + err.message);
      } finally {
@@ -107,7 +204,9 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
                          onClick={() => setSettings({...settings, url: ''})}
                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow"
                        >
-                         <Settings className="w-3 h-3" />
+                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                         </svg>
                        </button>
                      </div>
                    ) : (
@@ -120,6 +219,14 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
                      Upload a PNG with transparent background for best results.
                    </div>
                 </div>
+                {uploadSuccess && (
+                  <div className="mt-2 text-sm font-medium text-green-600 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {uploadSuccess}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -158,55 +265,57 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
                 />
               </div>
 
-              <div className="pt-4">
-                <button
+              <div className="pt-2">
+                 <button
                    onClick={handleSave}
-                   disabled={isSaving || !settings.url}
+                   disabled={isSaving}
                    className="px-6 py-2 bg-purple-600 text-white rounded shadow hover:bg-purple-700 disabled:opacity-50 font-medium flex items-center gap-2"
-                >
-                  {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Save Watermark Settings
-                </button>
+                 >
+                   {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                   Save Settings
+                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Placement Preview</label>
-              <div className="relative w-full aspect-video bg-gray-200 rounded border overflow-hidden flex items-center justify-center">
-                 <ImageIcon className="w-12 h-12 text-gray-300 absolute" />
-                 {settings.url && settings.placement !== 'diagonal' && (
-                    <img 
-                      src={settings.url} 
-                      className="absolute"
-                      style={{
-                        width: `${settings.size}%`,
-                        opacity: settings.opacity / 100,
-                        ...(settings.placement === 'bottom-right' ? { bottom: '5%', right: '5%' } : {}),
-                        ...(settings.placement === 'bottom-left' ? { bottom: '5%', left: '5%' } : {}),
-                        ...(settings.placement === 'center' ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' } : {})
-                      }}
-                      alt="Watermark preview"
-                    />
-                 )}
-                 {settings.url && settings.placement === 'diagonal' && (
-                    <div className="absolute inset-0 flex flex-wrap items-center justify-center overflow-hidden opacity-50" style={{ opacity: settings.opacity / 100 }}>
-                      <div className="w-[150%] h-[150%] -rotate-45 flex flex-wrap gap-8 items-center justify-center">
-                        {Array.from({length: 12}).map((_, i) => (
+               <label className="block text-sm font-medium text-gray-700 mb-2">Live Preview</label>
+               <div className="aspect-video bg-gray-200 rounded overflow-hidden relative flex items-center justify-center border border-gray-300 shadow-inner">
+                  <span className="text-gray-400 font-medium">Sample Photo</span>
+                  {settings.url && settings.placement !== 'diagonal' && (
+                     <img 
+                        src={settings.url} 
+                        className={`absolute ${
+                          settings.placement === 'bottom-right' ? 'bottom-4 right-4' :
+                          settings.placement === 'bottom-left' ? 'bottom-4 left-4' :
+                          'top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2'
+                        } pointer-events-none`}
+                        style={{
+                          width: `${settings.size}%`,
+                          opacity: settings.opacity / 100
+                        }}
+                     />
+                  )}
+                  {settings.url && settings.placement === 'diagonal' && (
+                     <div className="absolute inset-0 pointer-events-none opacity-20" style={{ opacity: settings.opacity / 100 }}>
+                       {/* Simplified diagonal pattern for preview */}
+                       <div className="w-full h-full flex flex-wrap gap-12 items-center justify-center transform -rotate-12 scale-150">
+                         {Array.from({length: 12}).map((_, i) => (
                            <img key={i} src={settings.url} style={{ width: `${settings.size}%` }} />
-                        ))}
-                      </div>
-                    </div>
-                 )}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                This setting is applied automatically to all future Gallery photo uploads.
-              </p>
+                         ))}
+                       </div>
+                     </div>
+                  )}
+               </div>
+               <p className="text-xs text-gray-500 mt-2">
+                 This preview shows how the watermark will appear on high-resolution gallery downloads.
+               </p>
             </div>
           </div>
         )}
     </div>
   );
 }
+
 
 function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: any }) {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -215,21 +324,23 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
      background_color: string;
      header_background_color: string;
      header_text_color: string;
+     logo_url?: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   useEffect(() => {
      if (selectedClientId) {
         const client = clients.find(c => c.id === selectedClientId);
         if (client) {
            let parsed = {} as any;
-           
-              try { parsed = typeof client.theme === 'string' ? JSON.parse(client.theme) : (client.theme || {}); } catch(e) {}
+           try { parsed = typeof client.theme === 'string' ? JSON.parse(client.theme) : (client.theme || {}); } catch(e) {}
            setThemeDraft({
               accent_color: parsed.accent_color || '#000000',
               background_color: parsed.background_color || '#f9fafb',
               header_background_color: parsed.header_background_color || '#ffffff',
-              header_text_color: parsed.header_text_color || parsed.accent_color || '#000000'
+              header_text_color: parsed.header_text_color || parsed.accent_color || '#000000',
+              logo_url: parsed.logo_url || ''
            });
         }
      } else {
@@ -237,26 +348,45 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
      }
   }, [selectedClientId, clients]);
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedClientId || !themeDraft) return;
+    setIsUploadingLogo(true);
+    try {
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${selectedClientId}/logo_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await (supabase as any).storage
+        .from('manifest_gallery')
+        .upload(fileName, file);
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: publicUrlData } = (supabase as any).storage
+        .from('manifest_gallery')
+        .getPublicUrl(fileName);
+        
+      setThemeDraft({ ...themeDraft, logo_url: publicUrlData.publicUrl });
+    } catch (err: any) {
+      alert('Failed to upload logo: ' + err.message);
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
   const handleSave = async () => {
      if (!selectedClientId || !themeDraft) return;
      setIsSaving(true);
-     
+     try {
         const client = clients.find(c => c.id === selectedClientId);
         if (!client) throw new Error("Client not found");
-
         const isFallback = client.id.startsWith('fallback');
         
-        const newThemeStr = JSON.stringify(themeDraft);
-        
-      try {
         if (!isFallback) {
-          // @ts-ignore
-const { error } = await supabase.from('manifest_clients').update({ theme: themeDraft }).eq('id', selectedClientId);
+          const { error } = await (supabase as any).from('manifest_clients').update({ theme: themeDraft }).eq('id', selectedClientId);
           if (error) throw error;
-        } else {
-          
         }
-
+        
         setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeDraft } : c));
         alert('Theme updated successfully.');
      } catch (err: any) {
@@ -268,7 +398,7 @@ const { error } = await supabase.from('manifest_clients').update({ theme: themeD
 
   return (
      <div className="bg-white p-6 rounded shadow-sm border">
-        <h3 className="text-lg font-bold mb-4">Store Theme Editor</h3>
+        <h3 className="text-lg font-bold mb-4">Store Theme & Logo Editor</h3>
         
         <div className="mb-6">
            <label className="block text-sm font-medium text-gray-700 mb-2">Select Store to Edit</label>
@@ -286,8 +416,32 @@ const { error } = await supabase.from('manifest_clients').update({ theme: themeD
 
         {themeDraft && (
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Controls */}
               <div className="space-y-4">
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+                   <div className="flex items-start gap-4">
+                     <div className="w-24 h-24 border rounded flex items-center justify-center bg-gray-50 overflow-hidden">
+                       {themeDraft.logo_url ? (
+                         <img src={themeDraft.logo_url} className="w-full h-full object-contain" alt="Logo" />
+                       ) : (
+                         <ImageIcon className="w-8 h-8 text-gray-300" />
+                       )}
+                     </div>
+                     <div className="flex-1 space-y-2">
+                       <label className="flex items-center justify-center gap-2 px-3 py-2 border rounded cursor-pointer hover:bg-gray-50 text-sm">
+                         {isUploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                         {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                         <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploadingLogo} />
+                       </label>
+                       {themeDraft.logo_url && (
+                         <button onClick={() => setThemeDraft({...themeDraft, logo_url: ''})} className="text-xs text-red-600 hover:underline">
+                           Remove Logo
+                         </button>
+                       )}
+                     </div>
+                   </div>
+                 </div>
+
                  <div>
                    <label className="block text-sm font-medium text-gray-700 mb-1">Accent Color</label>
                    <div className="flex items-center space-x-2">
@@ -316,54 +470,151 @@ const { error } = await supabase.from('manifest_clients').update({ theme: themeD
                      <span className="text-sm text-gray-500 font-mono">{themeDraft.header_text_color}</span>
                    </div>
                  </div>
-                 
-                 <div className="pt-4">
-                   <button 
-                     onClick={handleSave} 
-                     disabled={isSaving}
-                     className="px-6 py-2 bg-purple-600 text-white rounded shadow hover:bg-purple-700 disabled:opacity-50 font-medium"
-                   >
-                     {isSaving ? 'Saving...' : 'Save Theme Settings'}
-                   </button>
-                 </div>
               </div>
 
-              {/* Live Preview */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Live Preview</label>
-                <div 
-                  className="border rounded-lg overflow-hidden shadow-inner h-64 flex flex-col transition-colors"
-                  style={{ backgroundColor: themeDraft.background_color }}
-                >
-                   <header 
-                     className="px-4 py-3 flex items-center justify-between transition-colors shadow-sm"
-                     style={{ backgroundColor: themeDraft.header_background_color }}
+              <div className="bg-gray-50 p-4 rounded border flex flex-col justify-between">
+                 <div>
+                   <h4 className="font-bold text-sm text-gray-500 mb-4 uppercase tracking-wider">Preview</h4>
+                   <div 
+                     className="w-full rounded shadow-sm border overflow-hidden flex flex-col h-48"
+                     style={{ backgroundColor: themeDraft.background_color }}
                    >
-                      <div className="font-bold text-lg" style={{ color: themeDraft.header_text_color }}>
-                        {clients.find(c => c.id === selectedClientId)?.name}
-                      </div>
-                      <div className="flex space-x-2 opacity-80">
-                        <div className="w-16 h-4 rounded" style={{ backgroundColor: themeDraft.header_text_color }}></div>
-                        <div className="w-16 h-4 rounded" style={{ backgroundColor: themeDraft.header_text_color }}></div>
-                      </div>
-                   </header>
-                   <div className="p-4 flex-1">
-                      <div className="flex space-x-2 mb-4">
-                         <div className="w-24 h-8 rounded-full" style={{ backgroundColor: themeDraft.accent_color }}></div>
-                         <div className="w-24 h-8 rounded-full bg-white bg-opacity-60 border border-gray-200"></div>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="w-full h-16 rounded bg-white bg-opacity-80 border border-gray-200 flex items-center px-4 shadow-sm">
-                           <div className="w-10 h-10 rounded bg-gray-200 mr-4"></div>
-                           <div className="h-4 w-32 rounded bg-gray-200"></div>
+                     <div 
+                       className="px-4 py-3 border-b flex items-center justify-between"
+                       style={{ backgroundColor: themeDraft.header_background_color }}
+                     >
+                        {themeDraft.logo_url ? (
+                          <img src={themeDraft.logo_url} className="h-6 object-contain" alt="Logo" />
+                        ) : (
+                          <div className="font-bold" style={{ color: themeDraft.header_text_color }}>{clients.find(c => c.id === selectedClientId)?.name || 'Store Name'}</div>
+                        )}
+                        <div className="px-3 py-1 rounded text-xs font-bold text-white" style={{ backgroundColor: themeDraft.accent_color }}>
+                          Action
                         </div>
-                      </div>
+                     </div>
+                     <div className="p-4 flex-1">
+                        <div className="w-3/4 h-4 rounded mb-2" style={{ backgroundColor: themeDraft.accent_color, opacity: 0.2 }}></div>
+                        <div className="w-1/2 h-4 rounded" style={{ backgroundColor: themeDraft.accent_color, opacity: 0.2 }}></div>
+                     </div>
                    </div>
-                </div>
+                 </div>
+                 <div className="mt-4 pt-4 border-t">
+                    <button 
+                       onClick={handleSave} 
+                       disabled={isSaving}
+                       className="w-full bg-purple-600 text-white rounded py-2 font-bold hover:bg-purple-700 disabled:opacity-50"
+                    >
+                       {isSaving ? 'Saving...' : 'Save Theme Settings'}
+                    </button>
+                 </div>
               </div>
            </div>
         )}
      </div>
+  );
+}
+
+function BrandExclusionsEditor({ clients }: { clients: Client[] }) {
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [brands, setBrands] = useState<{name: string, isExcluded: boolean}[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedClientId) {
+      loadBrands();
+    } else {
+      setBrands([]);
+    }
+  }, [selectedClientId]);
+
+  async function loadBrands() {
+    setIsLoading(true);
+    try {
+      const { data: allBrands } = await (supabase as any).from('manifest_brands').select('name').order('name');
+      const { data: exclusions } = await (supabase as any)
+        .from('manifest_brand_exclusions')
+        .select('brand_name')
+        .eq('client_id', selectedClientId);
+        
+      const excludedNames = new Set((exclusions || []).map((e: any) => e.brand_name));
+      const merged = (allBrands || []).map((b: any) => ({
+        name: b.name,
+        isExcluded: excludedNames.has(b.name)
+      }));
+      setBrands(merged);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function toggleExclusion(brandName: string, currentlyExcluded: boolean) {
+    if (!selectedClientId) return;
+    
+    // Optimistic UI
+    setBrands(brands.map(b => b.name === brandName ? { ...b, isExcluded: !currentlyExcluded } : b));
+    
+    try {
+      if (currentlyExcluded) {
+        // Remove exclusion
+        await (supabase as any)
+          .from('manifest_brand_exclusions')
+          .delete()
+          .eq('client_id', selectedClientId)
+          .eq('brand_name', brandName);
+      } else {
+        // Add exclusion
+        await (supabase as any)
+          .from('manifest_brand_exclusions')
+          .insert({ client_id: selectedClientId, brand_name: brandName });
+      }
+    } catch (err: any) {
+      alert("Error updating exclusion: " + err.message);
+      // Revert on error
+      setBrands(brands.map(b => b.name === brandName ? { ...b, isExcluded: currentlyExcluded } : b));
+    }
+  }
+
+  return (
+    <div className="bg-white p-6 rounded shadow-sm border mt-8">
+      <h3 className="text-lg font-bold mb-4">Brand Exclusions</h3>
+      <p className="text-sm text-gray-500 mb-6">Hide universal brands that a specific store doesn't carry.</p>
+      
+      <div className="mb-6">
+         <label className="block text-sm font-medium text-gray-700 mb-2">Select Store</label>
+         <select 
+            value={selectedClientId} 
+            onChange={e => setSelectedClientId(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md border"
+         >
+            <option value="">-- Select a store --</option>
+            {clients.map(c => (
+               <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+         </select>
+      </div>
+
+      {selectedClientId && (
+        isLoading ? <div className="p-4 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div> :
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {brands.map(brand => (
+            <label key={brand.name} className="flex items-center space-x-3 p-3 border rounded hover:bg-gray-50 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={brand.isExcluded} 
+                onChange={() => toggleExclusion(brand.name, brand.isExcluded)}
+                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+              />
+              <span className={`text-sm ${brand.isExcluded ? 'text-gray-400 line-through' : 'text-gray-900 font-medium'}`}>
+                {brand.name}
+              </span>
+            </label>
+          ))}
+          {brands.length === 0 && <div className="text-sm text-gray-500 col-span-full">No brands found.</div>}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -372,7 +623,7 @@ export function MasterRoom() {
   
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('manifest_clients').select('*');
+      const { data } = await (supabase as any).from('manifest_clients').select('*');
       let loadedClients = data && data.length > 0 ? data : [
         { id: 'fallback-1', name: 'Ugomenz Electronics', slug: 'ugomenz', categories: [], theme: { accent_color: '#E8622C' }, created_at: new Date().toISOString() },
         { id: 'fallback-2', name: 'Adane House Electronics', slug: 'adanehouse', categories: [], theme: { accent_color: '#0ea5e9' }, created_at: new Date().toISOString() },
@@ -403,7 +654,9 @@ export function MasterRoom() {
          </button>
       </div>
 
+      <DomainSkinControl clients={clients} />
       <ThemeEditor clients={clients} setClients={setClients} />
+      <BrandExclusionsEditor clients={clients} />
       <WatermarkEditor clients={clients} setClients={setClients} />
     </div>
   );

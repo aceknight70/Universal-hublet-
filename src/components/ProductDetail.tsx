@@ -1,4 +1,4 @@
-import { ACTIVE_CLIENT_ID } from '../lib/supabase';
+
 import React, { useState, useEffect } from 'react';
 import { Product, Brand, SHARED_CATEGORIES } from '../types';
 import { X, Check, ImagePlus, Upload } from 'lucide-react';
@@ -164,7 +164,7 @@ export function ProductDetail({ product, brand, onClose, canEdit, onUpdate, isNe
      // Since we can't reliably predict storage RLS here, we'll do the actual upload if possible
      try {
        const fileExt = file.name.split('.').pop();
-       const folder = ACTIVE_CLIENT_ID;
+       const folder = client?.id || "default";
       const fileName = `${folder}/${product.id}_${slotKey}_${Math.random()}.${fileExt}`;
        const filePath = `${fileName}`;
 

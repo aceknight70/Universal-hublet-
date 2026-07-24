@@ -25,12 +25,14 @@ export function Showroom({ tagFilter }: { tagFilter?: string }) {
 
   useEffect(() => {
     if (!client) return;
-
-    async function loadData() {
+async function loadData() {
+      if (!client?.id) return;
       setLoading(true);
-      // Load assigned brands
-      const { data: brandLinks } = await supabase
-        .from('manifest_client_brands')
+
+      const { data: exclusions } = await supabase.from('manifest_brand_exclusions').select('brand_name').eq('client_id', client.id);
+      const excludedBrandNames = new Set((exclusions || []).map((e: any) => e.brand_name));
+
+      const { data: brandLinks } = await supabase        .from('manifest_client_brands')
         .select(`
           brand_id,
           tier,
@@ -43,11 +45,12 @@ export function Showroom({ tagFilter }: { tagFilter?: string }) {
         .order('display_order', { ascending: true });
 
       if (brandLinks && brandLinks.length > 0) {
-        const parsedBrands = brandLinks.map((bl: any) => ({
+        const parsedBrands = brandLinks.filter((bl: any) => (!bl.manifest_brands.exclusive_to_client_id || bl.manifest_brands.exclusive_to_client_id === client.id) && !excludedBrandNames.has(bl.manifest_brands.name)).map((bl: any) => ({
           ...bl.manifest_brands,
           tier: bl.tier,
           display_order: bl.display_order
         }));
+        parsedBrands.sort((a, b) => (a.sort_order ?? 1000) - (b.sort_order ?? 1000) || a.name.localeCompare(b.name));
         setBrands(parsedBrands);
       } else {
         // Fallback for demo/unseeded database

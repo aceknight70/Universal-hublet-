@@ -3,12 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { Role } from '../types';
 
 interface NavProps {
-  clientSlug: string;
+  
   viewMode: Role | 'customer';
   headerTextColor: string;
 }
 
-export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavProps) {
+export function StoreNavigation({ viewMode, headerTextColor }: NavProps) {
   const location = useLocation();
   const currentPath = location.pathname.split('/').pop() || '';
 
@@ -41,6 +41,8 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
   const managerLinks = [
     { name: 'Manager Room', path: 'manager' },
     { name: 'Sheet Manager', path: 'sheet-manager' },
+    { name: 'Brand Positioning', path: 'brands' },
+    { name: 'Invoice Design', path: 'invoice-design' },
   ];
 
   const masterLinks = [
@@ -69,12 +71,12 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
         {isOpen && (
           <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-100 rounded-md shadow-lg transition-all z-50 overflow-hidden">
             {links.map(link => {
-              const isActive = currentPath === link.path || (currentPath === clientSlug && link.path === '');
+              const isActive = currentPath === link.path || (currentPath === '' && link.path === '');
               return (
                 <Link 
                   key={link.path}
                   onClick={() => setIsOpen(false)}
-                  to={`/${clientSlug}/${link.path}`}
+                  to={`/${link.path}`}
                   className={`block px-4 py-2 text-sm ${isActive ? 'bg-gray-50 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
                 >
                   {link.name}
@@ -110,11 +112,11 @@ export function StoreNavigation({ clientSlug, viewMode, headerTextColor }: NavPr
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {customerLinks.map(link => {
-          const isActive = currentPath === link.path || (currentPath === clientSlug && link.path === '');
+          const isActive = currentPath === link.path || (currentPath === '' && link.path === '');
           return (
             <Link
               key={link.path}
-              to={`/${clientSlug}/${link.path}`}
+              to={`/${link.path}`}
               className={`text-sm font-medium whitespace-nowrap px-4 py-1.5 rounded-full transition-colors flex-shrink-0`}
               style={{ 
                 backgroundColor: isActive ? headerTextColor : 'transparent',

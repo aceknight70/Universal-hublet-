@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, ACTIVE_CLIENT_SLUG } from '../lib/supabase';
+import { ManagerRoom } from '../pages/ManagerRoom';
+import { BrandManager } from '../pages/BrandManager';
+import { InvoiceDesignManager } from '../pages/InvoiceDesignManager';
+
+import { supabase } from '../lib/supabase';
 import { Routes, Route, useNavigate, Link, Navigate, useLocation } from 'react-router-dom';
 import { StoreProvider, useStore } from '../hooks/useStore';
 import { useAuth } from '../hooks/useAuth';
@@ -22,7 +26,7 @@ import { StoreNavigation } from '../components/Navigation';
 function FloatingBackButton({ viewMode }: { viewMode: string }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const storeSlug = ACTIVE_CLIENT_SLUG;
+  
   
   const isIframe = window.self !== window.top;
   const isMaster = viewMode === 'master';
@@ -38,7 +42,7 @@ function FloatingBackButton({ viewMode }: { viewMode: string }) {
       window.parent.postMessage({ type: 'RETURN_TO_PARENT' }, '*');
       window.parent.postMessage('close', '*');
     } else {
-      navigate(`/${storeSlug}/master`);
+      navigate(`/master`);
     }
   };
 
@@ -111,12 +115,17 @@ function StoreContent() {
       >
         <div className="px-4 md:px-6 py-3 flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2 shrink-0">
-            <Link to={`/${client.slug}`} className="text-xl md:text-2xl font-bold" style={{ color: headerTextColor }}>{client.name}</Link>
+            <Link to={`/`} className="text-xl md:text-2xl font-bold flex items-center gap-3" style={{ color: headerTextColor }}>
+              {themeObj.logo_url ? (
+                <img src={themeObj.logo_url} alt={client.name} className="h-10 object-contain" />
+              ) : null}
+              {(!themeObj.logo_url || themeObj.show_name_with_logo !== false) ? client.name : ''}
+            </Link>
             
             <div className="flex items-center space-x-2 md:space-x-4" style={{ borderColor: headerTextColor }}>
             <div className="flex items-center space-x-2">
               <span className="text-xs uppercase tracking-wider font-semibold opacity-90 px-2 py-0.5 rounded border border-white/20" style={{ color: headerTextColor }}>
-                Official Adane House Hublet
+                Official {client.name} Hublet
               </span>
             </div>
             <div className="flex items-center space-x-2 md:border-l md:pl-4 border-opacity-20" style={{ borderColor: headerTextColor }}>
@@ -126,7 +135,7 @@ function StoreContent() {
                     {profile?.role || 'No Role'}
                   </span>
                   <button 
-                    onClick={() => logout().then(() => navigate(`/${client.slug}`))}
+                    onClick={() => logout().then(() => navigate(`/`))}
                     className="text-xs border border-white border-opacity-20 rounded px-2 py-1 hover:bg-black hover:bg-opacity-5"
                     style={{ color: headerTextColor }}
                   >
@@ -135,7 +144,7 @@ function StoreContent() {
                 </div>
               ) : (
                 <Link 
-                  to={`/${client.slug}/login`}
+                  to={`/login`}
                   className="text-xs border border-white border-opacity-20 rounded px-3 py-1 hover:bg-black hover:bg-opacity-5"
                   style={{ color: headerTextColor }}
                 >
@@ -168,7 +177,7 @@ function StoreContent() {
             ))}
             {ads.length === 0 && (viewMode === 'master' || viewMode === 'manager') && (
               <Link
-                to={`/${client.slug}/spotlight`}
+                to={`/spotlight`}
                 className="flex items-center justify-center px-3 py-2 border-2 border-dashed rounded text-xs font-bold transition-colors hover:bg-black/5 flex-shrink-0"
                 style={{ color: headerTextColor, borderColor: headerTextColor, opacity: 0.6 }}
                 title="This space is for Business Spotlight banners"
@@ -181,7 +190,7 @@ function StoreContent() {
         
         {/* Navigation Row */}
         <div className="border-t border-black/5 w-full">
-          <StoreNavigation clientSlug={client.slug} viewMode={viewMode} headerTextColor={headerTextColor} />
+          <StoreNavigation viewMode={viewMode} headerTextColor={headerTextColor} />
         </div>
       </header>
       
@@ -209,7 +218,7 @@ function StoreContent() {
 
           {/* Login */}
           <Route path="/login" element={
-            <div className="py-12"><ProtectedRoute><div className="text-center mt-10">Logged in successfully. <Link to={`/${client.slug}`} className="text-sky-600 underline">Go to Showroom</Link></div></ProtectedRoute></div>
+            <div className="py-12"><ProtectedRoute><div className="text-center mt-10">Logged in successfully. <Link to={`/`} className="text-sky-600 underline">Go to Showroom</Link></div></ProtectedRoute></div>
           } />
 
           {/* Staff Routes */}
@@ -218,8 +227,10 @@ function StoreContent() {
           <Route path="/invoice" element={<ProtectedRoute roleRequired="staff"><InvoiceReceiptGenerator /></ProtectedRoute>} />
 
           {/* Manager Routes */}
-          <Route path="/manager" element={<ProtectedRoute roleRequired="manager"><Placeholder title="Manager's Room" roleRequired="Manager" /></ProtectedRoute>} />
+          <Route path="/manager" element={<ProtectedRoute roleRequired="manager"><ManagerRoom /></ProtectedRoute>} />
           <Route path="/sheet-manager" element={<ProtectedRoute roleRequired="manager"><SheetManager /></ProtectedRoute>} />
+          <Route path="/brands" element={<ProtectedRoute roleRequired="manager"><BrandManager /></ProtectedRoute>} />
+          <Route path="/invoice-design" element={<ProtectedRoute roleRequired="manager"><InvoiceDesignManager /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute roleRequired="manager"><InventoryManager /></ProtectedRoute>} />
 
           {/* Master Routes */}
@@ -234,8 +245,8 @@ function StoreContent() {
 export function AppRouter() {
   return (
     <Routes>
-      <Route path={`/${ACTIVE_CLIENT_SLUG}/*`} element={<StoreLayout />} />
-      <Route path="*" element={<Navigate to={`/${ACTIVE_CLIENT_SLUG}`} replace />} />
+      <Route path={`/*`} element={<StoreLayout />} />
+      
     </Routes>
   );
 }

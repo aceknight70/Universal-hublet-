@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, ACTIVE_CLIENT_ID } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { useStore } from '../hooks/useStore';
 import { 
   AlertCircle, 
   Check, 
@@ -13,6 +14,7 @@ import {
 
 export function Complaints() {
   const { profile } = useAuth();
+  const { client } = useStore();
   const isStaff = profile?.role === 'staff' || profile?.role === 'manager' || profile?.role === 'master';
 
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,7 @@ export function Complaints() {
       const { data, error: dbErr } = await (supabase as any)
         .from('manifest_complaints')
         .select('*')
-        .eq('client_id', ACTIVE_CLIENT_ID)
+        .eq('client_id', client?.id || "default")
         .order('created_at', { ascending: false });
 
       if (dbErr) {
@@ -74,7 +76,7 @@ export function Complaints() {
 
     try {
       const payload = {
-        client_id: ACTIVE_CLIENT_ID,
+        client_id: client?.id || "default",
         customer_name: name,
         customer_phone: phone,
         product_name: product,
@@ -98,7 +100,7 @@ export function Complaints() {
       const local = localStorage.getItem('mock_complaints');
       const tickets = local ? JSON.parse(local) : [];
       const payload = {
-        client_id: ACTIVE_CLIENT_ID,
+        client_id: client?.id || "default",
         customer_name: name,
         customer_phone: phone,
         product_name: product,

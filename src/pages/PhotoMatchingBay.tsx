@@ -1,4 +1,4 @@
-import { ACTIVE_CLIENT_ID } from '../lib/supabase';
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../hooks/useStore';
@@ -44,7 +44,7 @@ export function PhotoMatchingBay() {
 
   async function loadTray() {
     try {
-      const folder = ACTIVE_CLIENT_ID;
+      const folder = client?.id || "default";
       const { data, error } = await supabase.storage.from('manifest_gallery').list(folder);
       if (error) throw error;
       // Filter out matched photos and placeholders
@@ -68,7 +68,7 @@ export function PhotoMatchingBay() {
     try {
       const compressedFile = await compressImage(file, 1600);
       const fileExt = compressedFile.name.split('.').pop() || 'jpg';
-      const folder = ACTIVE_CLIENT_ID;
+      const folder = client?.id || "default";
       const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
@@ -96,7 +96,7 @@ export function PhotoMatchingBay() {
     setIsMatching(true);
     setErrorMsg(null);
     try {
-      const folder = ACTIVE_CLIENT_ID;
+      const folder = client?.id || "default";
       const oldPath = `${folder}/${selectedPhoto.name}`;
       const newPath = `${folder}/matched_${Date.now()}_${selectedPhoto.name}`; // Add timestamp to avoid collisions
       
@@ -178,7 +178,7 @@ export function PhotoMatchingBay() {
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {photos.map(photo => {
-                  const folder = ACTIVE_CLIENT_ID;
+                  const folder = client?.id || "default";
                   const url = supabase.storage.from('manifest_gallery').getPublicUrl(`${folder}/${photo.name}`).data.publicUrl;
                   const isSelected = selectedPhoto?.name === photo.name;
                   return (
@@ -213,7 +213,7 @@ export function PhotoMatchingBay() {
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded border-2 border-white shadow-sm overflow-hidden">
                 <img 
-                  src={supabase.storage.from('manifest_gallery').getPublicUrl(`${ACTIVE_CLIENT_ID}/${selectedPhoto.name}`).data.publicUrl} 
+                  src={supabase.storage.from('manifest_gallery').getPublicUrl(`${client?.id || "default"}/${selectedPhoto.name}`).data.publicUrl} 
                   className="w-full h-full object-cover"
                 />
               </div>

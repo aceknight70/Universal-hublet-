@@ -7,6 +7,7 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          exclusive_to_client_id?: string | null;
           slug: string;
           categories: string | any[];
           theme: {
@@ -23,7 +24,9 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          exclusive_to_client_id?: string | null;
           logo_url: string | null;
+          sort_order?: number;
         };
         Insert: Record<string, any>;
         Update: Record<string, any>;
@@ -45,6 +48,7 @@ export interface Database {
           id: string;
           client_id: string | null;
           name: string;
+          exclusive_to_client_id?: string | null;
           role: Role;
           email?: string;
         };
@@ -57,6 +61,7 @@ export interface Database {
           brand: string | null;
           category: string | null;
           name: string;
+          exclusive_to_client_id?: string | null;
           spec_sheet: any | null;
           reference_photo_url: string | null;
           created_at: string;
@@ -81,6 +86,7 @@ export interface Database {
           id: string;
           client_id: string;
           logo_url: string | null;
+          sort_order?: number;
           primary_color: string | null;
           layout_style: string | null;
           bank_name: string | null;
@@ -98,6 +104,7 @@ export interface Database {
           brand_id: string | null;
           category: string;
           name: string;
+          exclusive_to_client_id?: string | null;
           description_headline: string | null;
           description_bullets: string[] | null;
           technical_specs: any | null;
@@ -215,6 +222,7 @@ export interface Product {
   brand?: string | null;
   category: string;
   name: string;
+          exclusive_to_client_id?: string | null;
   description_headline?: string | null;
   description_bullets?: string[] | null;
   technical_specs?: any | null;

@@ -13,14 +13,17 @@ export function InventoryManager() {
   useEffect(() => {
     if (client) loadData();
   }, [client]);
-
-  async function loadData() {
+async function loadData() {
+    if (!client?.id) return;
     setLoading(true);
-    const [{ data: catData, error: catErr }, { data: invData, error: invErr }] = await Promise.all([
-      supabase.from('manifest_catalog').select('*').order('name'),
-      supabase.from('manifest_inventory').select('*').eq('client_id', client?.id)
-    ]);
     
+    const { data: exclusions } = await supabase.from('manifest_brand_exclusions').select('brand_name').eq('client_id', client.id);
+    const excludedBrandNames = new Set((exclusions || []).map((e: any) => e.brand_name));
+
+    const [{ data: catData, error: catErr }, { data: invData, error: invErr }] = await Promise.all([
+      supabase.from('manifest_catalog').select('*').or(`exclusive_to_client_id.is.null,exclusive_to_client_id.eq.${client?.id}`).order('name'),
+      supabase.from('manifest_inventory').select('*').eq('client_id', client?.id)
+    ]);    
     if (catErr || invErr) {
        console.warn("Inventory Load Error (Expected if tables not set up)", catErr?.message, invErr?.message);
        const msg = catErr?.message || invErr?.message || '';
@@ -29,7 +32,7 @@ export function InventoryManager() {
        }
     }
     
-    if (catData) setCatalog(catData);
+    if (catData) setCatalog(catData.filter((item: any) => !excludedBrandNames.has(item.brand)));
     if (invData) setInventory(invData);
     setLoading(false);
   }

@@ -92,6 +92,7 @@ export function CatalogManager() {
             )}
             <div className="font-bold text-sm truncate" title={item.name}>{item.name}</div>
             <div className="text-xs text-gray-500 mb-2">{item.brand} • {item.category}</div>
+            {item.exclusive_to_client_id && <div className="text-[10px] font-bold text-white bg-purple-600 px-1.5 py-0.5 rounded inline-block">Exclusive: {item.exclusive_to_client_id}</div>}
             <div className="flex gap-2 mt-4">
               <button onClick={() => { setForm(item); setIsEditing(true); }} className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">Edit</button>
               <button onClick={() => handleDelete(item.id)} className="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded">Delete</button>

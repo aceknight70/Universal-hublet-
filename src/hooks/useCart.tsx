@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Product } from '../types';
-import { supabase, ACTIVE_CLIENT_ID } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { useStore } from '../hooks/useStore';
 
 interface CartItem {
   product: Product;
@@ -30,7 +31,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   
-  const storeSlug = ACTIVE_CLIENT_ID;
+  const { client } = useStore();
+  const storeSlug = client?.id || "adanehouse";
 
   // Load cart from Supabase on mount
   useEffect(() => {
