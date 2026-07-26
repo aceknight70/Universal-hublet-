@@ -26,10 +26,6 @@ export async function verifyTierPin(clientId: string, tier: 'manager' | 'staff',
     console.warn('RPC verify_tier_pin failed:', e);
   }
 
-  // Development defaults if database table is missing or unseeded
-  if (tier === 'manager' && pin === '1234') return true;
-  if (tier === 'staff' && pin === '0000') return true;
-
   return false;
 }
 
