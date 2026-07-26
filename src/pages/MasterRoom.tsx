@@ -79,18 +79,20 @@ function DomainSkinControl({ clients }: { clients: Client[] }) {
           value={assignedClientId} 
           onChange={e => handleSelectChange(e.target.value)}
           disabled={isSaving}
-          className="block w-full pl-3 pr-10 py-3 text-base border-gray-300 bg-gray-50 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md border font-medium cursor-pointer"
+          className="appearance-none block w-full pl-3 pr-10 py-3 text-base border-gray-300 bg-gray-50 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md border font-medium cursor-pointer"
         >
           <option value="" disabled>-- Select a business --</option>
           {clients.map(c => (
              <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        {isSaving && (
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-8 text-gray-500">
-            <Loader2 className="w-4 h-4 animate-spin" />
-          </div>
-        )}
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -402,9 +404,11 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
         themeObj.logo_url = publicUrlData.publicUrl;
         
         await (supabase as any).from('manifest_clients').update({ theme: themeObj }).eq('id', selectedClientId);
+        setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeObj } : c));
       }
       
-      alert('Logo uploaded and saved successfully!');
+      alert('Logo uploaded and saved successfully! Refreshing...');
+      window.location.reload();
     } catch (err: any) {
       alert('Failed to upload logo: ' + err.message);
     } finally {

@@ -23,6 +23,75 @@ import { Gallery } from './Gallery';
 import { StoreNavigation } from '../components/Navigation';
 
 
+import { ChevronDown, Loader2 } from 'lucide-react';
+
+function TitleDropdown({ client, themeObj, headerTextColor, viewMode }: { client: any, themeObj: any, headerTextColor: string, viewMode: string }) {
+  const [clients, setClients] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const { refreshClient } = useStore();
+  const currentDomain = window.location.hostname;
+
+  useEffect(() => {
+    // Only fetch if they have master permissions or we just want to let anyone switch in preview
+    supabase.from('manifest_clients').select('id, name, display_name').order('name')
+      .then(({data}) => {
+        if (data) setClients(data);
+      });
+  }, []);
+
+  const handleSelectChange = async (newClientId: string) => {
+    if (!newClientId || newClientId === client.id) return;
+    setIsSaving(true);
+    try {
+      await supabase.from('manifest_domain_config').upsert({ domain: currentDomain, client_id: newClientId });
+      if (refreshClient) {
+        await refreshClient();
+      }
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const displayName = (!themeObj.logo_url || themeObj.show_name_with_logo !== false) ? (themeObj.display_name || client.name) : '';
+
+  return (
+    <div className="relative inline-flex items-center gap-3">
+      {themeObj.logo_url && (
+        <Link to="/">
+          <img src={themeObj.logo_url} alt={displayName} className="h-10 object-contain hover:opacity-80 transition-opacity" />
+        </Link>
+      )}
+      <div className="relative flex items-center gap-1 group">
+        {displayName && (
+          <Link to="/">
+            <span className="text-xl md:text-2xl font-bold hover:opacity-80 transition-opacity" style={{ color: headerTextColor }}>
+              {displayName}
+            </span>
+          </Link>
+        )}
+        {clients.length > 1 && viewMode === 'master' && (
+           <div className="relative flex items-center">
+             <ChevronDown className="w-5 h-5 opacity-50 group-hover:opacity-100 transition-opacity cursor-pointer" style={{ color: headerTextColor }} />
+             <select 
+               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+               value={client.id}
+               onChange={(e) => handleSelectChange(e.target.value)}
+               disabled={isSaving}
+             >
+               {clients.map(c => (
+                 <option key={c.id} value={c.id}>{c.display_name || c.name}</option>
+               ))}
+             </select>
+           </div>
+        )}
+        {isSaving && <Loader2 className="w-4 h-4 animate-spin ml-2" style={{ color: headerTextColor }} />}
+      </div>
+    </div>
+  );
+}
+
 function FloatingBackButton({ viewMode }: { viewMode: string }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -115,12 +184,9 @@ function StoreContent() {
       >
         <div className="px-4 md:px-6 py-3 flex items-start justify-between gap-4">
           <div className="flex flex-col gap-2 shrink-0">
-            <Link to={`/`} className="text-xl md:text-2xl font-bold flex items-center gap-3" style={{ color: headerTextColor }}>
-              {themeObj.logo_url ? (
-                <img src={themeObj.logo_url} alt={themeObj.display_name || client.name} className="h-10 object-contain" />
-              ) : null}
-              {(!themeObj.logo_url || themeObj.show_name_with_logo !== false) ? (themeObj.display_name || client.name) : ''}
-            </Link>
+            <div className="flex items-center">
+               <TitleDropdown client={client} themeObj={themeObj} headerTextColor={headerTextColor} viewMode={viewMode} />
+            </div>
             
             <div className="flex items-center space-x-2 md:space-x-4" style={{ borderColor: headerTextColor }}>
             <div className="flex items-center space-x-2">
