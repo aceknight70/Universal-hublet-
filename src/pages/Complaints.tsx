@@ -55,14 +55,9 @@ export function Complaints() {
          setTickets(data || []);
       }
     } catch (err: any) {
-      console.error('Failed to load tickets, falling back to local storage:', err);
-      const local = localStorage.getItem('mock_complaints');
-      if (local) {
-         setTickets(JSON.parse(local));
-      } else {
-         setTickets([]);
-      }
-      // Do not set error to allow graceful fallback
+      console.error('Failed to load tickets:', err);
+      setError('Failed to load complaints from database: ' + (err.message || 'Database error'));
+      setTickets([]);
     } finally {
       setLoading(false);
     }
@@ -95,36 +90,17 @@ export function Complaints() {
       if (dbErr) throw dbErr;
       
       setSuccess('Your ticket has been submitted successfully. Our team will contact you shortly.');
-    } catch (err: any) {
-      console.error('Submit error, using local fallback:', err);
-      const local = localStorage.getItem('mock_complaints');
-      const tickets = local ? JSON.parse(local) : [];
-      const payload = {
-        client_id: client?.id || "default",
-        customer_name: name,
-        customer_phone: phone,
-        product_name: product,
-        purchase_date: purchaseDate || null,
-        description,
-        resolution_type: resolutionType,
-        status: 'Received',
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString()
-      };
-      tickets.unshift(payload);
-      localStorage.setItem('mock_complaints', JSON.stringify(tickets));
-      if (isStaff) {
-         setTickets(tickets);
-      }
-      setSuccess('Your ticket has been submitted successfully (Offline Mode). Our team will contact you shortly.');
-    } finally {
-      // Reset form
+      // Reset form on success
       setName('');
       setPhone('');
       setProduct('');
       setPurchaseDate('');
       setDescription('');
       setResolutionType('repair');
+    } catch (err: any) {
+      console.error('Submit error:', err);
+      setError('Failed to submit ticket to database: ' + (err.message || 'Database error'));
+    } finally {
       setLoading(false);
     }
   };
@@ -139,16 +115,8 @@ export function Complaints() {
       if (updateErr) throw updateErr;
       setTickets(tickets.map(t => t.id === id ? { ...t, status: newStatus } : t));
     } catch (err: any) {
-      console.error('Update error, using local fallback:', err);
-      const local = localStorage.getItem('mock_complaints');
-      if (local) {
-        const parsed = JSON.parse(local);
-        const updated = parsed.map((t: any) => t.id === id ? { ...t, status: newStatus } : t);
-        localStorage.setItem('mock_complaints', JSON.stringify(updated));
-        setTickets(updated);
-      } else {
-        setTickets(tickets.map(t => t.id === id ? { ...t, status: newStatus } : t));
-      }
+      console.error('Update error:', err);
+      alert('Failed to update ticket status in database: ' + (err.message || 'Database error'));
     }
   };
 

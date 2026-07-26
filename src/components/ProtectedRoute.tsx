@@ -16,26 +16,17 @@ const roleLevels = {
 };
 
 export function ProtectedRoute({ children, roleRequired }: ProtectedRouteProps) {
-  const { user, profile, loading } = useAuth();
+  const { profile, loading } = useAuth();
   const { client } = useStore();
 
   if (loading) return <div className="p-8 text-center text-gray-500">Checking authorization...</div>;
 
-  if (!user) {
+  if (!profile) {
     return (
       <div className="max-w-2xl mx-auto p-6">
         <h2 className="text-2xl font-bold mb-4 text-center">Restricted Access</h2>
-        <p className="text-center text-gray-600 mb-6">You must be logged in to access this area.</p>
+        <p className="text-center text-gray-600 mb-6">Please log in to access this area.</p>
         <Login />
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="p-8 text-center max-w-lg mx-auto">
-        <h2 className="text-xl font-bold text-red-600 mb-2">Access Denied</h2>
-        <p className="text-gray-700">Your account isn't set up yet — contact Master.</p>
       </div>
     );
   }
@@ -56,13 +47,12 @@ export function ProtectedRoute({ children, roleRequired }: ProtectedRouteProps) 
   }
 
   // If this is a specific client store, make sure the user belongs to it (or is master)
-  // client is from useStore context.
   if (client && profile.role !== 'master') {
-    if (profile.client_id !== client.id) {
+    if (profile.client_id && profile.client_id !== client.id) {
       return (
         <div className="p-8 text-center max-w-lg mx-auto">
           <h2 className="text-xl font-bold text-red-600 mb-2">Wrong Store</h2>
-          <p className="text-gray-700">You are logged in, but not assigned to this store.</p>
+          <p className="text-gray-700">You are logged in, but for a different store than this hublet.</p>
         </div>
       );
     }

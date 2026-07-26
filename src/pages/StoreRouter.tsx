@@ -129,14 +129,15 @@ function StoreContent() {
               </span>
             </div>
             <div className="flex items-center space-x-2 md:border-l md:pl-4 border-opacity-20" style={{ borderColor: headerTextColor }}>
-              {user ? (
+              {profile ? (
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-semibold uppercase px-2 py-1 bg-black bg-opacity-10 rounded" style={{ color: headerTextColor }}>
-                    {profile?.role || 'No Role'}
+                  <span className="text-xs font-semibold uppercase px-2 py-1 bg-black bg-opacity-10 rounded flex items-center gap-1" style={{ color: headerTextColor }}>
+                    <span className="opacity-75">{profile.role}:</span>
+                    <span>{profile.name}</span>
                   </span>
                   <button 
                     onClick={() => logout().then(() => navigate(`/`))}
-                    className="text-xs border border-white border-opacity-20 rounded px-2 py-1 hover:bg-black hover:bg-opacity-5"
+                    className="text-xs border border-white border-opacity-20 rounded px-2 py-1 hover:bg-black hover:bg-opacity-5 transition-colors"
                     style={{ color: headerTextColor }}
                   >
                     Logout
@@ -145,7 +146,7 @@ function StoreContent() {
               ) : (
                 <Link 
                   to={`/login`}
-                  className="text-xs border border-white border-opacity-20 rounded px-3 py-1 hover:bg-black hover:bg-opacity-5"
+                  className="text-xs border border-white border-opacity-20 rounded px-3 py-1 hover:bg-black hover:bg-opacity-5 transition-colors"
                   style={{ color: headerTextColor }}
                 >
                   Staff Login

@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase';
 import { Client } from '../types';
 import { AccountSettings } from '../components/AccountSettings';
 import { useStore } from '../hooks/useStore';
-import { Settings, Upload, Loader2, Image as ImageIcon, Copy, Check } from 'lucide-react';
+import { setTierPin, setIndividualStaffPin, deleteIndividualStaffPin, listStaffNames } from '../lib/pinAuth';
+import { Settings, Upload, Loader2, Image as ImageIcon, Copy, Check, Key, Shield, User, Trash2 } from 'lucide-react';
 
 function DomainSkinControl({ clients }: { clients: Client[] }) {
   const [currentDomain] = useState(window.location.hostname);
@@ -651,6 +652,263 @@ function BrandExclusionsEditor({ clients }: { clients: Client[] }) {
   );
 }
 
+function MasterPinControl({ clients }: { clients: Client[] }) {
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [managerPin, setManagerPin] = useState('');
+  const [sharedStaffPin, setSharedStaffPin] = useState('');
+
+  // Named staff state
+  const [staffList, setStaffList] = useState<string[]>([]);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffPin, setNewStaffPin] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (clients.length > 0 && !selectedClientId) {
+      setSelectedClientId(clients[0].id);
+    }
+  }, [clients, selectedClientId]);
+
+  useEffect(() => {
+    if (selectedClientId) {
+      loadStaffList();
+    }
+  }, [selectedClientId]);
+
+  async function loadStaffList() {
+    if (!selectedClientId) return;
+    const names = await listStaffNames(selectedClientId);
+    setStaffList(names);
+  }
+
+  async function handleSetManagerPin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedClientId) return;
+    setLoading(true);
+    setMessage(null);
+    const res = await setTierPin(selectedClientId, 'manager', managerPin);
+    if (res.success) {
+      setMessage({ type: 'success', text: 'Manager PIN updated successfully! ✓' });
+      setManagerPin('');
+    } else {
+      setMessage({ type: 'error', text: res.error || 'Failed to update Manager PIN.' });
+    }
+    setLoading(false);
+  }
+
+  async function handleSetSharedStaffPin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedClientId) return;
+    setLoading(true);
+    setMessage(null);
+    const res = await setTierPin(selectedClientId, 'staff', sharedStaffPin);
+    if (res.success) {
+      setMessage({ type: 'success', text: 'Default Shared Staff PIN updated successfully! ✓' });
+      setSharedStaffPin('');
+    } else {
+      setMessage({ type: 'error', text: res.error || 'Failed to update Shared Staff PIN.' });
+    }
+    setLoading(false);
+  }
+
+  async function handleAddNamedStaff(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedClientId || !newStaffName || !newStaffPin) return;
+    setLoading(true);
+    setMessage(null);
+    const res = await setIndividualStaffPin(selectedClientId, newStaffName, newStaffPin);
+    if (res.success) {
+      setMessage({ type: 'success', text: `Individual PIN set for ${newStaffName}! ✓` });
+      setNewStaffName('');
+      setNewStaffPin('');
+      loadStaffList();
+    } else {
+      setMessage({ type: 'error', text: res.error || 'Failed to set named staff PIN.' });
+    }
+    setLoading(false);
+  }
+
+  async function handleDeleteNamedStaff(name: string) {
+    if (!selectedClientId) return;
+    if (!confirm(`Remove individual PIN access for ${name}?`)) return;
+    setLoading(true);
+    const res = await deleteIndividualStaffPin(selectedClientId, name);
+    if (res.success) {
+      setMessage({ type: 'success', text: `Removed individual PIN entry for ${name}.` });
+      loadStaffList();
+    } else {
+      setMessage({ type: 'error', text: res.error || 'Failed to delete PIN.' });
+    }
+    setLoading(false);
+  }
+
+  const selectedClientName = clients.find((c) => c.id === selectedClientId)?.name || 'Store';
+
+  return (
+    <div className="bg-white p-6 rounded shadow-sm border space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <Key className="w-5 h-5 text-purple-600" /> Store PIN Administration
+          </h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Manage Manager PINs, default shared Staff PINs, and named individual staff PINs across all stores.
+          </p>
+        </div>
+
+        <div className="w-full sm:w-64">
+          <label className="block text-xs font-bold text-gray-700 mb-1">Select Target Store</label>
+          <select
+            value={selectedClientId}
+            onChange={(e) => setSelectedClientId(e.target.value)}
+            className="w-full p-2 text-sm border rounded focus:ring-2 focus:ring-purple-500 focus:outline-none"
+          >
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.slug})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {message && (
+        <div
+          className={`p-3 rounded text-xs flex items-center gap-2 ${
+            message.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}
+        >
+          {message.type === 'success' ? <Check className="w-4 h-4 shrink-0" /> : <Shield className="w-4 h-4 shrink-0" />}
+          <span>{message.text}</span>
+        </div>
+      )}
+
+      {/* Tier PINs (Manager & Default Shared Staff) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form onSubmit={handleSetManagerPin} className="p-4 bg-purple-50/50 rounded-lg border border-purple-100 space-y-3">
+          <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
+            <Shield className="w-4 h-4 text-purple-700" />
+            Set Manager PIN — {selectedClientName}
+          </div>
+          <p className="text-xs text-gray-600">
+            Used by Manager to log in and authorize adding named staff PINs.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              required
+              maxLength={8}
+              placeholder="New Manager PIN"
+              value={managerPin}
+              onChange={(e) => setManagerPin(e.target.value)}
+              className="flex-1 p-2 text-sm font-mono border rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+            />
+            <button
+              type="submit"
+              disabled={loading || !managerPin}
+              className="px-3 py-2 bg-purple-700 text-white font-bold text-xs rounded shadow hover:bg-purple-800 disabled:bg-purple-300"
+            >
+              Update Manager PIN
+            </button>
+          </div>
+        </form>
+
+        <form onSubmit={handleSetSharedStaffPin} className="p-4 bg-sky-50/50 rounded-lg border border-sky-100 space-y-3">
+          <div className="flex items-center gap-2 text-sky-900 font-bold text-sm">
+            <Key className="w-4 h-4 text-sky-700" />
+            Set Shared Staff PIN — {selectedClientName}
+          </div>
+          <p className="text-xs text-gray-600">
+            Default fallback PIN for staff members who don't have an individual name entry.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              required
+              maxLength={8}
+              placeholder="New Shared Staff PIN"
+              value={sharedStaffPin}
+              onChange={(e) => setSharedStaffPin(e.target.value)}
+              className="flex-1 p-2 text-sm font-mono border rounded focus:outline-none focus:ring-1 focus:ring-sky-500"
+            />
+            <button
+              type="submit"
+              disabled={loading || !sharedStaffPin}
+              className="px-3 py-2 bg-sky-700 text-white font-bold text-xs rounded shadow hover:bg-sky-800 disabled:bg-sky-300"
+            >
+              Update Shared PIN
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Named Individual Staff PINs */}
+      <div className="pt-2 border-t">
+        <h4 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+          <User className="w-4 h-4 text-purple-600" /> Named Individual Staff PINs ({selectedClientName})
+        </h4>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-3">
+          <form onSubmit={handleAddNamedStaff} className="p-4 border rounded-lg space-y-3 bg-gray-50/50">
+            <span className="text-xs font-bold text-gray-700 block">Add or Update Named Staff Entry</span>
+            <input
+              type="text"
+              required
+              placeholder="Staff Name (e.g. Sarah Connor)"
+              value={newStaffName}
+              onChange={(e) => setNewStaffName(e.target.value)}
+              className="w-full p-2 text-sm border rounded"
+            />
+            <input
+              type="password"
+              required
+              maxLength={8}
+              placeholder="Individual PIN"
+              value={newStaffPin}
+              onChange={(e) => setNewStaffPin(e.target.value)}
+              className="w-full p-2 text-sm font-mono border rounded"
+            />
+            <button
+              type="submit"
+              disabled={loading || !newStaffName || !newStaffPin}
+              className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded transition-colors disabled:bg-purple-300"
+            >
+              Save Named Staff PIN
+            </button>
+          </form>
+
+          <div className="border rounded-lg p-4 bg-white flex flex-col">
+            <span className="text-xs font-bold text-gray-700 block mb-2">Registered Individual Staff Names</span>
+            {staffList.length > 0 ? (
+              <div className="divide-y max-h-48 overflow-y-auto flex-1">
+                {staffList.map((name) => (
+                  <div key={name} className="py-2 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-800">{name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNamedStaff(name)}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                      title="Remove PIN"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 italic py-4 text-center">No individual staff names registered for this store.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MasterRoom() {
   const [clients, setClients] = useState<Client[]>([]);
   const { user } = useAuth();
@@ -703,6 +961,8 @@ export function MasterRoom() {
       
       <AccountSettings />
       
+      <MasterPinControl clients={clients} />
+
       {/* New Business Wizard Placeholder */}
       <div className="bg-white p-6 rounded shadow-sm border">
          <h3 className="text-lg font-bold mb-4">New Business Onboarding Wizard</h3>
