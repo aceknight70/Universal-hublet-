@@ -7,6 +7,71 @@ import { useStore } from '../hooks/useStore';
 import { setTierPin, setIndividualStaffPin, deleteIndividualStaffPin, listStaffNames } from '../lib/pinAuth';
 import { Settings, Upload, Loader2, Image as ImageIcon, Copy, Check, Key, Shield, User, Trash2 } from 'lucide-react';
 
+export async function uploadImageFileWithFallback(file: File, path: string): Promise<string> {
+  // 1. Try manifest_gallery bucket
+  try {
+    const { error } = await (supabase as any).storage
+      .from('manifest_gallery')
+      .upload(path, file, { upsert: true });
+    if (!error) {
+      const { data } = (supabase as any).storage.from('manifest_gallery').getPublicUrl(path);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch (e) {
+    console.warn('Storage manifest_gallery upload failed:', e);
+  }
+
+  // 2. Try manifest-gallery-photos bucket
+  try {
+    const { error } = await (supabase as any).storage
+      .from('manifest-gallery-photos')
+      .upload(path, file, { upsert: true });
+    if (!error) {
+      const { data } = (supabase as any).storage.from('manifest-gallery-photos').getPublicUrl(path);
+      if (data?.publicUrl) return data.publicUrl;
+    }
+  } catch (e) {
+    console.warn('Storage manifest-gallery-photos upload failed:', e);
+  }
+
+  // 3. Fallback: Convert file to data URL with canvas optimization
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 800;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/png', 0.85));
+        } else {
+          resolve(result);
+        }
+      };
+      img.onerror = () => resolve(result);
+      img.src = result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function DomainSkinControl({ clients }: { clients: Client[] }) {
   const [currentDomain] = useState(window.location.hostname);
   const [assignedClientId, setAssignedClientId] = useState('');
@@ -101,6 +166,7 @@ function DomainSkinControl({ clients }: { clients: Client[] }) {
 
 function WatermarkEditor({ clients, setClients }: { clients: Client[], setClients: any }) {
   const [selectedClientId, setSelectedClientId] = useState('');
+  const { refreshClient } = useStore();
   const [settings, setSettings] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -135,12 +201,9 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
        const file = e.target.files[0];
        const filename = `watermarks/${selectedClientId}-${Date.now()}`;
        
-       const { error } = await (supabase as any).storage.from('manifest_gallery').upload(filename, file);
-       if (error) throw error;
+       const watermarkUrl = await uploadImageFileWithFallback(file, filename);
        
-       const { data: urlData } = supabase.storage.from('manifest_gallery').getPublicUrl(filename);
-       
-       const newSettings = { ...settings, url: urlData.publicUrl };
+       const newSettings = { ...settings, url: watermarkUrl };
        setSettings(newSettings);
        
        // Auto-save the client theme so it's immediate
@@ -186,7 +249,10 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
           if (error) throw error;
        }
        setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeObj } : c));
-       setUploadSuccess('Watermark settings updated ✓');
+       if (refreshClient) {
+         await refreshClient();
+       }
+       setUploadSuccess('Watermark settings saved successfully! ✓');
        setTimeout(() => setUploadSuccess(''), 5000);
      } catch (err: any) {
         alert('Failed to save watermark settings: ' + err.message);
@@ -341,6 +407,7 @@ function WatermarkEditor({ clients, setClients }: { clients: Client[], setClient
 
 function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: any }) {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const { refreshClient } = useStore();
   const [themeDraft, setThemeDraft] = useState<{
      accent_color: string;
      background_color: string;
@@ -351,6 +418,7 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoSuccessMsg, setLogoSuccessMsg] = useState('');
 
   useEffect(() => {
      if (selectedClientId) {
@@ -370,45 +438,45 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
      } else {
         setThemeDraft(null);
      }
+     setLogoSuccessMsg('');
   }, [selectedClientId, clients]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedClientId || !themeDraft) return;
     setIsUploadingLogo(true);
+    setLogoSuccessMsg('');
     try {
       const file = e.target.files[0];
       const fileExt = file.name.split('.').pop() || 'png';
       const fileName = `${selectedClientId}/logo_${Date.now()}.${fileExt}`;
       
-      const { error: uploadError } = await (supabase as any).storage
-        .from('manifest_gallery')
-        .upload(fileName, file);
+      const logoUrl = await uploadImageFileWithFallback(file, fileName);
       
-      if (uploadError) throw uploadError;
-      
-      const { data: publicUrlData } = (supabase as any).storage
-        .from('manifest_gallery')
-        .getPublicUrl(fileName);
-        
-      const newTheme = { ...themeDraft, logo_url: publicUrlData.publicUrl };
+      const newTheme = { ...themeDraft, logo_url: logoUrl };
       setThemeDraft(newTheme);
 
       // Auto-save the client theme so it's immediate
       const client = clients.find(c => c.id === selectedClientId);
-      if (client && !client.id.startsWith('fallback')) {
+      if (client) {
         let themeObj = client.theme;
         if (typeof themeObj === 'string') {
            try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
         }
         themeObj = themeObj || {};
-        themeObj.logo_url = publicUrlData.publicUrl;
+        themeObj.logo_url = logoUrl;
         
-        await (supabase as any).from('manifest_clients').update({ theme: themeObj }).eq('id', selectedClientId);
+        if (!client.id.startsWith('fallback')) {
+          await (supabase as any).from('manifest_clients').update({ theme: themeObj }).eq('id', selectedClientId);
+        }
         setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeObj } : c));
       }
-      
-      alert('Logo uploaded and saved successfully! Refreshing...');
-      window.location.reload();
+
+      if (refreshClient) {
+        await refreshClient();
+      }
+
+      setLogoSuccessMsg('Logo uploaded and applied successfully! ✓');
+      setTimeout(() => setLogoSuccessMsg(''), 5000);
     } catch (err: any) {
       alert('Failed to upload logo: ' + err.message);
     } finally {
@@ -419,18 +487,31 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
   const handleSave = async () => {
      if (!selectedClientId || !themeDraft) return;
      setIsSaving(true);
+     setLogoSuccessMsg('');
      try {
         const client = clients.find(c => c.id === selectedClientId);
         if (!client) throw new Error("Client not found");
         const isFallback = client.id.startsWith('fallback');
         
+        let themeObj = client.theme;
+        if (typeof themeObj === 'string') {
+           try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+        }
+        themeObj = { ...themeObj, ...themeDraft };
+        
         if (!isFallback) {
-          const { error } = await (supabase as any).from('manifest_clients').update({ theme: themeDraft }).eq('id', selectedClientId);
+          const { error } = await (supabase as any).from('manifest_clients').update({ theme: themeObj }).eq('id', selectedClientId);
           if (error) throw error;
         }
         
-        setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeDraft } : c));
-        alert('Theme updated successfully.');
+        setClients(clients.map(c => c.id === selectedClientId ? { ...c, theme: themeObj } : c));
+        
+        if (refreshClient) {
+          await refreshClient();
+        }
+
+        setLogoSuccessMsg('All theme changes saved successfully! ✓');
+        setTimeout(() => setLogoSuccessMsg(''), 5000);
      } catch (err: any) {
         alert('Failed to save theme: ' + err.message);
      } finally {
@@ -475,6 +556,9 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
                          {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploadingLogo} />
                        </label>
+                       {logoSuccessMsg && (
+                         <p className="text-xs text-green-600 font-medium">{logoSuccessMsg}</p>
+                       )}
                        {themeDraft.logo_url && (
                          <button onClick={() => setThemeDraft({...themeDraft, logo_url: ''})} className="text-xs text-red-600 hover:underline">
                            Remove Logo
@@ -521,6 +605,20 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
                      <input type="color" value={themeDraft.header_text_color} onChange={e => setThemeDraft({...themeDraft, header_text_color: e.target.value})} />
                      <span className="text-sm text-gray-500 font-mono">{themeDraft.header_text_color}</span>
                    </div>
+                 </div>
+
+                 <div className="pt-4 border-t">
+                   <button 
+                      onClick={handleSave} 
+                      disabled={isSaving}
+                      className="w-full sm:w-auto px-6 py-2.5 bg-purple-600 text-white rounded-md font-bold hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                   >
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      {isSaving ? 'Saving Changes...' : 'Save Changes'}
+                   </button>
+                   {logoSuccessMsg && (
+                     <p className="mt-2 text-sm text-green-600 font-medium">{logoSuccessMsg}</p>
+                   )}
                  </div>
               </div>
 

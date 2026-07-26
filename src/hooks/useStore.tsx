@@ -36,10 +36,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         console.error("Error looking up domain:", domainError);
       }
 
+      // Generate candidate IDs/slugs to handle variations like ofrank vs o-frank
+      const candidates = Array.from(new Set([
+        resolvedClientId,
+        resolvedClientId.includes('-') ? resolvedClientId.replace(/-/g, '') : resolvedClientId,
+        resolvedClientId === 'ofrank' ? 'o-frank' : resolvedClientId === 'o-frank' ? 'ofrank' : resolvedClientId
+      ]));
+
+      const orConditions = candidates.map(c => `id.eq.${c},slug.eq.${c}`).join(',');
+
       let { data, error: dbError } = await supabase
         .from('manifest_clients')
         .select('*')
-        .eq('id', resolvedClientId)
+        .or(orConditions)
         .maybeSingle();
 
       if (dbError) {

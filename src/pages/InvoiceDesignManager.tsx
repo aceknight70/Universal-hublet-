@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { InvoiceDesign, Client } from '../types';
+import { uploadImageFileWithFallback } from './MasterRoom';
+import { Upload, Loader2 } from 'lucide-react';
 
 export function InvoiceDesignManager() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -51,6 +53,22 @@ function DesignEditor({ client, initialDesign, onSaved }: { client: Client, init
   const [form, setForm] = useState<Partial<InvoiceDesign>>(initialDesign || { client_id: client.id });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || !e.target.files[0]) return;
+    setUploadingLogo(true);
+    try {
+      const file = e.target.files[0];
+      const filename = `invoice_logos/${client.id}-${Date.now()}`;
+      const url = await uploadImageFileWithFallback(file, filename);
+      setForm(prev => ({ ...prev, logo_url: url }));
+    } catch (err: any) {
+      alert("Failed to upload logo: " + err.message);
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -84,8 +102,15 @@ function DesignEditor({ client, initialDesign, onSaved }: { client: Client, init
       
       <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-bold mb-1">Logo URL</label>
-          <input type="text" className="w-full p-2 border rounded text-sm" value={form.logo_url || ''} onChange={e => setForm({...form, logo_url: e.target.value})} />
+          <label className="block text-sm font-bold mb-1">Logo URL or Upload</label>
+          <div className="flex gap-2">
+            <input type="text" className="w-full p-2 border rounded text-sm flex-1" value={form.logo_url || ''} onChange={e => setForm({...form, logo_url: e.target.value})} placeholder="https://..." />
+            <label className="px-3 py-2 bg-gray-100 hover:bg-gray-200 border rounded cursor-pointer flex items-center justify-center text-sm gap-1 shrink-0">
+              {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              <span className="hidden sm:inline">Upload</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+            </label>
+          </div>
         </div>
         <div>
           <label className="block text-sm font-bold mb-1">Primary Color (Hex)</label>
