@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { Client } from '../types';
 import { AccountSettings } from '../components/AccountSettings';
 import { useStore } from '../hooks/useStore';
-import { Settings, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Settings, Upload, Loader2, Image as ImageIcon, Copy, Check } from 'lucide-react';
 
 function DomainSkinControl({ clients }: { clients: Client[] }) {
   const [currentDomain] = useState(window.location.hostname);
@@ -47,9 +48,29 @@ function DomainSkinControl({ clients }: { clients: Client[] }) {
 
   return (
     <div className="bg-white p-6 rounded shadow-sm border relative">
-      <h3 className="text-lg font-bold mb-4">Domain Skin Control</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold">Domain Skin Control</h3>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-gray-50 text-sm">
+          <span className="text-gray-500">Current Domain:</span>
+          <strong className="font-mono">{currentDomain}</strong>
+          <span className={`w-2.5 h-2.5 rounded-full ml-1 ${
+            ['universal-hublet.vercel.app', 'allsufficiencyhublet-1.vercel.app', 'adanehousehublet.vercel.app'].includes(currentDomain) 
+              ? 'bg-green-500' 
+              : 'bg-red-500'
+          }`} title={
+            ['universal-hublet.vercel.app', 'allsufficiencyhublet-1.vercel.app', 'adanehousehublet.vercel.app'].includes(currentDomain)
+              ? "Real deployed domain"
+              : "Preview or local domain - locks applied here will not affect the live site"
+          } />
+        </div>
+      </div>
       <p className="text-sm text-gray-500 mb-6">
-        Instantly switch the identity of this domain (<strong>{currentDomain}</strong>). Changes take effect immediately.
+        Instantly switch the identity of this domain. Changes take effect immediately.
+        {!['universal-hublet.vercel.app', 'allsufficiencyhublet-1.vercel.app', 'adanehousehublet.vercel.app'].includes(currentDomain) && (
+          <span className="block mt-2 text-red-600 font-medium">
+            ⚠️ You are in a preview environment. Skin locks applied here will only affect this preview address.
+          </span>
+        )}
       </p>
       
       <div className="relative max-w-sm">
@@ -325,6 +346,7 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
      header_background_color: string;
      header_text_color: string;
      logo_url?: string;
+     display_name?: string;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -340,7 +362,8 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
               background_color: parsed.background_color || '#f9fafb',
               header_background_color: parsed.header_background_color || '#ffffff',
               header_text_color: parsed.header_text_color || parsed.accent_color || '#000000',
-              logo_url: parsed.logo_url || ''
+              logo_url: parsed.logo_url || '',
+              display_name: parsed.display_name || client.name || ''
            });
         }
      } else {
@@ -443,6 +466,16 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
                  </div>
 
                  <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Business Display Name</label>
+                   <input
+                     type="text"
+                     className="mt-1 block w-full pl-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md border"
+                     placeholder="E.g., Adane House Electronics"
+                     value={themeDraft.display_name || ''}
+                     onChange={e => setThemeDraft({...themeDraft, display_name: e.target.value})}
+                   />
+                 </div>
+                 <div>
                    <label className="block text-sm font-medium text-gray-700 mb-1">Accent Color</label>
                    <div className="flex items-center space-x-2">
                      <input type="color" value={themeDraft.accent_color} onChange={e => setThemeDraft({...themeDraft, accent_color: e.target.value})} />
@@ -486,7 +519,7 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
                         {themeDraft.logo_url ? (
                           <img src={themeDraft.logo_url} className="h-6 object-contain" alt="Logo" />
                         ) : (
-                          <div className="font-bold" style={{ color: themeDraft.header_text_color }}>{clients.find(c => c.id === selectedClientId)?.name || 'Store Name'}</div>
+                          <div className="font-bold" style={{ color: themeDraft.header_text_color }}>{themeDraft.display_name || clients.find(c => c.id === selectedClientId)?.name || 'Store Name'}</div>
                         )}
                         <div className="px-3 py-1 rounded text-xs font-bold text-white" style={{ backgroundColor: themeDraft.accent_color }}>
                           Action
@@ -620,6 +653,16 @@ function BrandExclusionsEditor({ clients }: { clients: Client[] }) {
 
 export function MasterRoom() {
   const [clients, setClients] = useState<Client[]>([]);
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = () => {
+    if (user?.id) {
+      navigator.clipboard.writeText(user.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
   
   useEffect(() => {
     async function load() {
@@ -639,8 +682,23 @@ export function MasterRoom() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
-      <div className="bg-purple-50 text-purple-800 px-4 py-2 rounded text-sm">
-        <strong>Master Room</strong> • Manage stores, brands, and system settings.
+      <div className="bg-purple-50 text-purple-800 px-4 py-2 rounded text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <strong>Master Room</strong> • Manage stores, brands, and system settings.
+        </div>
+        {user?.id && (
+          <div className="flex items-center gap-2 bg-purple-100 px-2 py-1 rounded text-xs font-mono">
+            <span className="opacity-70">Master ID:</span>
+            <strong>{user.id}</strong>
+            <button 
+              onClick={handleCopy}
+              className="p-1 hover:bg-purple-200 rounded transition-colors text-purple-700"
+              title="Copy ID"
+            >
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        )}
       </div>
       
       <AccountSettings />

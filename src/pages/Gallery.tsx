@@ -46,6 +46,15 @@ export function Gallery() {
   const { profile } = useAuth();
   const isStaff = profile?.role === 'staff' || profile?.role === 'manager' || profile?.role === 'master';
   
+  const getDisplayName = () => {
+    if (!client) return 'Store';
+    let themeObj = client.theme as any;
+    if (typeof themeObj === 'string') {
+      try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+    }
+    return themeObj?.display_name || client.name;
+  };
+  
   const [items, setItems] = useState<ParsedGalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +99,7 @@ export function Gallery() {
       id: rec.id,
       photo_url: rec.photo_url,
       thumbnail_url: rec.thumbnail_url || parsed.thumbnail_url || rec.photo_url,
-      product_name: parsed.product_name || `${client?.name || 'Store'} Featured Item`,
+      product_name: parsed.product_name || `${getDisplayName()} Featured Item`,
       spec: parsed.spec || '',
       price: typeof parsed.price === 'number' ? parsed.price : (parsed.price ? parseFloat(parsed.price) : null),
       created_at: rec.created_at,
@@ -219,7 +228,7 @@ export function Gallery() {
       
       // Create JSON payload (we'll keep thumbnail_url in here as well for fallback)
       const captionPayload = JSON.stringify({
-        product_name: formName.trim() || `${client?.name || 'Store'} Featured Item`,
+        product_name: formName.trim() || `${getDisplayName()} Featured Item`,
         spec: formSpec.trim(),
         price: formPrice ? parseFloat(formPrice) : null,
         thumbnail_url: thumbUrl,
@@ -294,7 +303,7 @@ export function Gallery() {
       }
       
       const captionPayload = JSON.stringify({
-        product_name: formName.trim() || `${client?.name || 'Store'} Featured Item`,
+        product_name: formName.trim() || `${getDisplayName()} Featured Item`,
         spec: formSpec.trim(),
         price: formPrice ? parseFloat(formPrice) : null,
         thumbnail_url: thumbUrl,
@@ -332,7 +341,7 @@ export function Gallery() {
         ...selectedItem,
         photo_url: fullUrl,
         thumbnail_url: thumbUrl,
-        product_name: formName.trim() || `${client?.name || 'Store'} Featured Item`,
+        product_name: formName.trim() || `${getDisplayName()} Featured Item`,
         spec: formSpec.trim(),
         price: formPrice ? parseFloat(formPrice) : null
       };
@@ -514,7 +523,7 @@ export function Gallery() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              {client?.name || 'Store'} Official Gallery
+              {getDisplayName()} Official Gallery
             </h1>
             <span className="px-2.5 py-0.5 text-xs font-semibold bg-sky-50 text-sky-700 rounded-full border border-sky-100">
               Verified Collection
@@ -582,7 +591,7 @@ export function Gallery() {
       {loading ? (
         <div className="py-20 text-center text-gray-500 flex flex-col items-center justify-center gap-3">
           <Loader2 className="w-9 h-9 animate-spin text-[var(--theme-accent)]" />
-          <span className="text-sm font-medium">Loading {client?.name || 'Store'} Gallery...</span>
+          <span className="text-sm font-medium">Loading {getDisplayName()} Gallery...</span>
         </div>
       ) : items.length === 0 ? (
         <div className="py-20 text-center border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50/50 flex flex-col items-center justify-center p-8">
@@ -639,7 +648,7 @@ export function Gallery() {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[var(--theme-accent)]" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  {client?.name || 'Store'} Product Showcase
+                  {getDisplayName()} Product Showcase
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -699,7 +708,7 @@ export function Gallery() {
                     {selectedItem.product_name}
                   </h2>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    Added to {client?.name || 'Store'} Gallery on {new Date(selectedItem.created_at).toLocaleDateString()}
+                    Added to {getDisplayName()} Gallery on {new Date(selectedItem.created_at).toLocaleDateString()}
                   </p>
                 </div>
 
@@ -730,7 +739,7 @@ export function Gallery() {
                   className="w-full inline-flex items-center justify-center gap-2 py-3 bg-[var(--theme-accent)] text-white rounded-xl font-semibold text-sm shadow-md hover:opacity-90 transition-all"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>Inquire with {client?.name || 'Store'} Store</span>
+                  <span>Inquire with {getDisplayName()} Store</span>
                 </a>
               </div>
             </div>

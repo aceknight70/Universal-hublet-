@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
 export function Login({ onSuccess }: { onSuccess?: () => void }) {
@@ -14,6 +15,9 @@ export function Login({ onSuccess }: { onSuccess?: () => void }) {
     setLoading(true);
     try {
       await login(email, password);
+      // DEBUG: Verify auth.uid() is real
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("Master Login Success. auth.uid() =", session?.user?.id);
       if (onSuccess) onSuccess();
     } catch (err: any) {
       setError(err.message || 'Login failed');

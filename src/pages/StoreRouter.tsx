@@ -117,15 +117,15 @@ function StoreContent() {
           <div className="flex flex-col gap-2 shrink-0">
             <Link to={`/`} className="text-xl md:text-2xl font-bold flex items-center gap-3" style={{ color: headerTextColor }}>
               {themeObj.logo_url ? (
-                <img src={themeObj.logo_url} alt={client.name} className="h-10 object-contain" />
+                <img src={themeObj.logo_url} alt={themeObj.display_name || client.name} className="h-10 object-contain" />
               ) : null}
-              {(!themeObj.logo_url || themeObj.show_name_with_logo !== false) ? client.name : ''}
+              {(!themeObj.logo_url || themeObj.show_name_with_logo !== false) ? (themeObj.display_name || client.name) : ''}
             </Link>
             
             <div className="flex items-center space-x-2 md:space-x-4" style={{ borderColor: headerTextColor }}>
             <div className="flex items-center space-x-2">
               <span className="text-xs uppercase tracking-wider font-semibold opacity-90 px-2 py-0.5 rounded border border-white/20" style={{ color: headerTextColor }}>
-                Official {client.name} Hublet
+                Official {themeObj.display_name || client.name} Hublet
               </span>
             </div>
             <div className="flex items-center space-x-2 md:border-l md:pl-4 border-opacity-20" style={{ borderColor: headerTextColor }}>
