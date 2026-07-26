@@ -74,25 +74,23 @@ function DomainSkinControl({ clients }: { clients: Client[] }) {
         )}
       </p>
       
-      <div className="relative max-w-sm">
+      <div className="relative max-w-sm mt-4">
         <select 
           value={assignedClientId} 
           onChange={e => handleSelectChange(e.target.value)}
           disabled={isSaving}
-          className="appearance-none block w-full pl-3 pr-10 py-3 text-base border-gray-300 bg-gray-50 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md border font-medium cursor-pointer"
+          className="block w-full pl-3 pr-10 py-3 text-base border-gray-300 bg-gray-50 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md border font-medium cursor-pointer"
         >
           <option value="" disabled>-- Select a business --</option>
           {clients.map(c => (
              <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          )}
-        </div>
+        {isSaving && (
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-8 text-gray-500">
+            <Loader2 className="w-4 h-4 animate-spin" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -390,7 +388,23 @@ function ThemeEditor({ clients, setClients }: { clients: Client[], setClients: a
         .from('manifest_gallery')
         .getPublicUrl(fileName);
         
-      setThemeDraft({ ...themeDraft, logo_url: publicUrlData.publicUrl });
+      const newTheme = { ...themeDraft, logo_url: publicUrlData.publicUrl };
+      setThemeDraft(newTheme);
+
+      // Auto-save the client theme so it's immediate
+      const client = clients.find(c => c.id === selectedClientId);
+      if (client && !client.id.startsWith('fallback')) {
+        let themeObj = client.theme;
+        if (typeof themeObj === 'string') {
+           try { themeObj = JSON.parse(themeObj); } catch(e) { themeObj = {}; }
+        }
+        themeObj = themeObj || {};
+        themeObj.logo_url = publicUrlData.publicUrl;
+        
+        await (supabase as any).from('manifest_clients').update({ theme: themeObj }).eq('id', selectedClientId);
+      }
+      
+      alert('Logo uploaded and saved successfully!');
     } catch (err: any) {
       alert('Failed to upload logo: ' + err.message);
     } finally {
